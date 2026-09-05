@@ -1,0 +1,6 @@
+{
+  "name": "Charte Homes",
+  "description": "Charte Cars — Premier Ethiopian automobile marketplace app to buy, rent, and list verified vehicles with instant mobile and desktop app download.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

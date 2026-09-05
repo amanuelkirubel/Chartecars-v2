@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: 'Fraunces', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', 'Noto Sans Ethiopic', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --color-charte-blue: #0B3B95;
+  --color-charte-navy: #091932;
+  --color-charte-deep: #060F20;
+  --color-charte-accent: #2563EB;
+  --color-charte-light: #3B82F6;
+}
+
+/* Custom scrollbar and smooth transitions */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #091932;
+}
+::-webkit-scrollbar-thumb {
+  background: #1E3A6E;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2563EB;
+}
