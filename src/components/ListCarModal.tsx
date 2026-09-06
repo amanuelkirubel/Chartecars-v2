@@ -11,7 +11,9 @@ import {
   Plus, 
   Trash2,
   CreditCard,
-  User 
+  User,
+  Copy,
+  Check
 } from 'lucide-react';
 import { CarListing, Language, ListingType } from '../types';
 import { POPULAR_CAR_MAKES, CAR_BODY_TYPES, ETHIOPIAN_PLATE_CODES } from '../data/mockCars';
@@ -23,6 +25,7 @@ interface ListCarModalProps {
   onSubmit?: (newCar: Omit<CarListing, 'id' | 'createdAt' | 'views'>) => void;
   onAddCar?: (newCar: Omit<CarListing, 'id' | 'createdAt' | 'views'>) => void;
   lang: Language;
+  isAdminLoggedIn?: boolean;
 }
 
 export const ListCarModal: React.FC<ListCarModalProps> = ({
@@ -31,9 +34,8 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
   onSubmit,
   onAddCar,
   lang,
+  isAdminLoggedIn = false,
 }) => {
-  if (!isOpen) return null;
-
   // Form State
   const [type, setType] = useState<ListingType>('sale');
   const [make, setMake] = useState('Toyota');
@@ -60,7 +62,7 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
     'Air Conditioning'
   ]);
 
-  // Private Seller Contact Info (Strictly confidential for admin)
+  // Private Seller Contact Info
   const [sellerName, setSellerName] = useState('');
   const [sellerPhone, setSellerPhone] = useState('');
   const [sellerAltPhone, setSellerAltPhone] = useState('');
@@ -69,12 +71,18 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
   const [preferredContact, setPreferredContact] = useState<'phone' | 'whatsapp' | 'telegram' | 'any'>('phone');
   const [sellerNotes, setSellerNotes] = useState('');
 
-  // Featured Gold Promotion & Payment
+  // Mandatory Payment Verification State (Enforced: No one can list without pay; only admin can list without pay)
+  const [listingPaymentMethod, setListingPaymentMethod] = useState<'telebirr' | 'cbe'>('telebirr');
+  const [listingTxnRef, setListingTxnRef] = useState('');
+  const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
+
+  // Optional Featured Promotion Upgrade
   const [isFeaturedPromotion, setIsFeaturedPromotion] = useState(false);
-  const [featuredPaymentMethod, setFeaturedPaymentMethod] = useState<'telebirr' | 'cbe'>('telebirr');
-  const [featuredTxnRef, setFeaturedTxnRef] = useState('');
 
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Keep hook calls unconditionally above return guard
+  if (!isOpen) return null;
 
   const AVAILABLE_FEATURES = [
     'Panoramic Sunroof',
@@ -103,7 +111,6 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
     const files = e.target.files;
     if (!files) return;
 
-    const newPhotos: string[] = [];
     const maxAllowed = 15 - photos.length;
     const toProcess: File[] = Array.from(files).slice(0, maxAllowed) as File[];
 
@@ -122,8 +129,15 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
     setPhotos(photos.filter((_, i) => i !== index));
   };
 
+  const handleCopy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedAccount(label);
+    setTimeout(() => setCopiedAccount(null), 2500);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
 
     const actualMake = make === 'Other' ? customMake.trim() : make;
     if (!actualMake || !model.trim()) {
@@ -149,6 +163,18 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
         ? 'የሻጭ ስልክ ቁጥር ማስገባት ግዴታ ነው (ገዢዎች በቀጥታ እንዲያገኙዎት)።' 
         : 'Primary Phone Number is required so buyers can contact you directly.');
       return;
+    }
+
+    // STRICT PAYMENT ENFORCEMENT:
+    // "no one can list their car to sell without pay, only admin can list without pay"
+    if (!isAdminLoggedIn) {
+      const cleanRef = listingTxnRef.trim();
+      if (!cleanRef || cleanRef.length < 5) {
+        setErrorMsg(lang === 'am'
+          ? 'ክፍያ ሳይፈጽሙ መኪናዎን መዘርዘር አይችሉም! እባክዎ የ600 ብር መዘርዘሪያ ክፍያ በቴሌብር (0715737393) ወይም በንግድ ባንክ (1000582914029) ከፍለው የደረሰኝ ቁጥር (Transaction Reference) ያስገቡ። አስተዳዳሪ (Admin) ብቻ ነው ያለ ክፍያ መዘርዘር የሚችለው።'
+          : 'Payment is required to list! Without payment, no one can list their car to sell. Please complete the 600 ETB listing payment via Telebirr or CBE and provide your Transaction Reference. Only verified administrators can list without pay.');
+        return;
+      }
     }
 
     const defaultPhotos = photos.length > 0 ? photos : [
@@ -180,6 +206,7 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
         photos: defaultPhotos,
         features: selectedFeatures,
         description: description.trim() || `${year} ${actualMake} ${model} available for ${type === 'rent' ? 'rent' : 'sale'} in ${city}. Verified condition.`,
+        // Status: active (Green) on listing
         status: 'active',
         isFeatured: isFeaturedPromotion,
         sellerType: 'owner',
@@ -190,7 +217,7 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
           email: sellerEmail.trim() || undefined,
           telegram: sellerTelegram.trim() || undefined,
           preferredContact,
-          notes: sellerNotes.trim() || undefined,
+          notes: !isAdminLoggedIn ? `[PAID 600 ETB] Ref: ${listingTxnRef.trim()} via ${listingPaymentMethod.toUpperCase()} | ${sellerNotes}` : `[ADMIN FREE LISTING] | ${sellerNotes}`,
         }
       });
     }
@@ -213,7 +240,9 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
                 {lang === 'am' ? 'መኪናዎን በቻርቴ ይዘርዝሩ' : 'List Your Vehicle on Charte Cars'}
               </h2>
               <p className="text-xs text-slate-500">
-                {lang === 'am' ? 'መኪናዎን ለሽያጭ ወይም ለኪራይ ያቅርቡ' : 'Direct listing for car sale or rental across Ethiopia'}
+                {isAdminLoggedIn
+                  ? (lang === 'am' ? 'አስተዳዳሪ (Admin) ነዎት - ያለ ክፍያ በቀጥታ መዘርዘር ይችላሉ' : 'Admin Mode: Instant Verified Free Listing')
+                  : (lang === 'am' ? 'ያለ ክፍያ ማንም መኪና መዘርዘር አይችልም (አስተዳዳሪ ብቻ ነፃ መዘርዘር ይችላል)' : 'Listing requires 600 ETB verification fee • Only admin can list without pay')}
               </p>
             </div>
           </div>
@@ -221,359 +250,325 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors"
+            className="p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="max-h-[82vh] overflow-y-auto p-5 sm:p-7 space-y-6 text-xs">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-7 space-y-6 max-h-[82vh] overflow-y-auto">
           
-          {/* FOR SELLERS — 600 ETB, ONE TIME INFO BANNER */}
-          <div className="bg-[#051A46] border border-blue-500/40 rounded-2xl p-4 sm:p-5 text-slate-100 shadow-md">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center shrink-0 text-amber-400">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-xs sm:text-sm font-bold tracking-wider uppercase text-sky-300 flex items-center gap-2">
-                  <span>{lang === 'am' ? 'ለሻጮች — ' : 'FOR SELLERS — '}</span>
-                  <span className="text-amber-400 font-extrabold">
-                    {lang === 'am' ? '600 ብር፣ የአንድ ጊዜ' : '600 ETB, ONE TIME'}
-                  </span>
-                </h3>
-                <p className="text-slate-200 text-[11px] sm:text-xs leading-relaxed">
-                  {lang === 'am'
-                    ? 'ይመዝገቡ፣ የአንድ ጊዜ 600 ብር ክፍያ ብቻ ይክፈሉ፣ መኪናዎን እስከ 15 ፎቶዎች እና ሙሉ መግለጫ ጋር ይዘርዝሩ። ዋጋዎን ወይም ፎቶዎችዎን በማንኛውም ጊዜ ያሻሽሉ፤ ሲፈልጉ መኪናዎን የተሸጠ ወይም አስቸኳይ ብለው ምልክት ያድርጉ።'
-                    : 'Register, pay a single 600 ETB fee, and list your car with up to 15 photos and a full description. Edit your price or photos anytime, and mark your car as Sold or Urgent whenever you need.'}
-                </p>
-              </div>
-            </div>
-          </div>
-
+          {/* Validation Error Alert */}
           {errorMsg && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
+            <div className="bg-red-50 border-2 border-red-500 text-red-700 p-4 rounded-2xl flex items-start gap-3 shadow-md animate-shake">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
+              <div className="text-xs font-semibold leading-relaxed">
+                {errorMsg}
+              </div>
             </div>
           )}
 
-          {/* Section 1: Listing Mode (Sale vs Rent) */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
-              1. {lang === 'am' ? 'የዝርዝሩ አይነት' : 'Listing Purpose'}
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setType('sale')}
-                className={`py-3 px-4 rounded-xl font-bold text-xs border transition-all flex items-center justify-center gap-2 ${
-                  type === 'sale'
-                    ? 'bg-[#003399] text-white border-[#003399] shadow-md'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
+          {/* ADMIN STATUS BANNER */}
+          {isAdminLoggedIn ? (
+            <div className="bg-emerald-50 border-2 border-emerald-500 rounded-2xl p-4 flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-emerald-900 uppercase tracking-wider">
+                    {lang === 'am' ? 'የአስተዳዳሪ ፈቃድ (Admin Privileges Active)' : 'Administrator Access Active'}
+                  </span>
+                  <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                    Free Listing
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-800 mt-0.5">
+                  {lang === 'am'
+                    ? 'እንደ አስተዳዳሪ ስለገቡ ያለ ምንም ክፍያ መኪና በቀጥታ ማተም ይችላሉ።'
+                    : 'You are authenticated as Admin. You have authorized clearance to publish car listings directly without payment.'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-900 leading-relaxed">
+                <strong>{lang === 'am' ? 'አስፈላጊ ማሳሰቢያ፡ ' : 'Marketplace Listing Rule: '}</strong>
+                {lang === 'am'
+                  ? 'ያለ ክፍያ ማንም ሰው መኪና መዘርዘር ወይም መሸጥ አይችልም። አስተዳዳሪ (Admin) ብቻ ነው ያለ ክፍያ መዘርዘር የሚችለው። መኪናዎን ለማተም የ600 ብር ማረጋገጫ ክፍያ ከዚህ በታች በቴሌብር ወይም በንግድ ባንክ መፈጸም ግዴታ ነው።'
+                  : 'Without payment, no one can list their car to sell. Only verified platform administrators can list without pay. A 600 ETB listing verification fee is mandatory before publication.'}
+              </div>
+            </div>
+          )}
+
+          {/* SECTION 1: LISTING TYPE & CONDITION */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                {lang === 'am' ? 'የዝርዝር አይነት (Listing Type)' : 'Listing Intent'}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setType('sale')}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                    type === 'sale'
+                      ? 'bg-[#003399] border-[#003399] text-white shadow-sm'
+                      : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>{lang === 'am' ? 'ለሽያጭ (For Sale)' : 'For Sale'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setType('rent')}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                    type === 'rent'
+                      ? 'bg-amber-500 border-amber-500 text-slate-950 font-black shadow-sm'
+                      : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>{lang === 'am' ? 'ለኪራይ (For Rent)' : 'For Rent'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                {lang === 'am' ? 'የመኪናው ሁኔታ (Condition)' : 'Vehicle Condition'}
+              </label>
+              <select
+                value={condition}
+                onChange={(e) => setCondition(e.target.value as any)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600"
               >
-                <span>🚗 {lang === 'am' ? 'ለመሸጥ (For Sale)' : 'Sell My Car'}</span>
-              </button>
+                <option value="brand_new">{lang === 'am' ? 'አዲስ 0 ኪሎሜትር (Brand New 0km)' : 'Brand New (0 km)'}</option>
+                <option value="like_new">{lang === 'am' ? 'በጣም ንጹህ (Like New)' : 'Like New (Mint Condition)'}</option>
+                <option value="used">{lang === 'am' ? 'ያገለገለ (Used)' : 'Used / Pre-Owned'}</option>
+                <option value="duty_free">{lang === 'am' ? 'ቀረጥ ነጻ (Duty Free)' : 'Duty Free Eligible'}</option>
+              </select>
+            </div>
+          </div>
 
-              <button
-                type="button"
-                onClick={() => setType('rent')}
-                className={`py-3 px-4 rounded-xl font-bold text-xs border transition-all flex items-center justify-center gap-2 ${
-                  type === 'rent'
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-md'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
+          {/* SECTION 2: MAKE, MODEL & YEAR */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Make / Brand
+              </label>
+              <select
+                value={make}
+                onChange={(e) => setMake(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-600"
               >
-                <span>🔑 {lang === 'am' ? 'ለኪራይ (For Rent)' : 'Rent Out My Car'}</span>
-              </button>
+                {POPULAR_CAR_MAKES.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              {make === 'Other' && (
+                <input
+                  type="text"
+                  value={customMake}
+                  onChange={(e) => setCustomMake(e.target.value)}
+                  placeholder="Type Brand (e.g. Geely)"
+                  className="w-full mt-2 bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs text-slate-900"
+                />
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Model Name
+              </label>
+              <input
+                type="text"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder="e.g. Land Cruiser V8, Byd Song Plus"
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Manufacture Year
+              </label>
+              <input
+                type="number"
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
+                min={1980}
+                max={2026}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-600 font-medium"
+              />
             </div>
           </div>
 
-          {/* Section 2: Vehicle Specs */}
-          <div className="space-y-3">
-            <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
-              2. {lang === 'am' ? 'የመኪናው ዝርዝር መረጃዎች' : 'Vehicle Specifications'}
-            </label>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Make */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Make / Brand *</label>
-                <select
-                  value={make}
-                  onChange={(e) => setMake(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
-                >
-                  {POPULAR_CAR_MAKES.map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                  <option value="Other">Other Make...</option>
-                </select>
-                {make === 'Other' && (
-                  <input
-                    type="text"
-                    value={customMake}
-                    onChange={(e) => setCustomMake(e.target.value)}
-                    placeholder="Enter custom make name"
-                    className="w-full mt-1.5 bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 focus:outline-none focus:border-blue-500"
-                  />
-                )}
-              </div>
-
-              {/* Model */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Model *</label>
-                <input
-                  type="text"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="e.g. RAV4, Dzire, Tucson, Atto 3"
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
-                />
-              </div>
-
-              {/* Year */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Model Year *</label>
-                <select
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500 font-medium font-mono"
-                >
-                  {[2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2010, 2008].map((y) => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              </div>
+          {/* SECTION 3: SPECS (Transmission, Fuel, Plate, Body, Color) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Transmission</label>
+              <select
+                value={transmission}
+                onChange={(e) => setTransmission(e.target.value as any)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900"
+              >
+                <option value="automatic">Automatic</option>
+                <option value="manual">Manual</option>
+              </select>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {/* Body Type */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Body Type</label>
-                <select
-                  value={bodyType}
-                  onChange={(e) => setBodyType(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500"
-                >
-                  {CAR_BODY_TYPES.map((b) => (
-                    <option key={b.id} value={b.id}>{b.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Transmission */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Transmission</label>
-                <select
-                  value={transmission}
-                  onChange={(e) => setTransmission(e.target.value as any)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500"
-                >
-                  <option value="automatic">Automatic</option>
-                  <option value="manual">Manual</option>
-                </select>
-              </div>
-
-              {/* Fuel Type */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Fuel Type</label>
-                <select
-                  value={fuelType}
-                  onChange={(e) => setFuelType(e.target.value as any)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500"
-                >
-                  <option value="petrol">Petrol (Benzine)</option>
-                  <option value="electric">Electric (EV)</option>
-                  <option value="hybrid">Hybrid</option>
-                  <option value="diesel">Diesel</option>
-                </select>
-              </div>
-
-              {/* Condition */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Condition</label>
-                <select
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value as any)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500"
-                >
-                  <option value="brand_new">Brand New 0km</option>
-                  <option value="like_new">Like New</option>
-                  <option value="used">Used</option>
-                  <option value="duty_free">Duty Free</option>
-                </select>
-              </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Fuel Type</label>
+              <select
+                value={fuelType}
+                onChange={(e) => setFuelType(e.target.value as any)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900"
+              >
+                <option value="petrol">Petrol / Benzine</option>
+                <option value="electric">100% Electric (EV)</option>
+                <option value="hybrid">Hybrid</option>
+                <option value="diesel">Diesel</option>
+              </select>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {/* Plate Code */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Plate Code</label>
-                <select
-                  value={plateCode}
-                  onChange={(e) => setPlateCode(e.target.value as any)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500"
-                >
-                  {ETHIOPIAN_PLATE_CODES.map((p) => (
-                    <option key={p.id} value={p.id}>{p.label}</option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Body Type</label>
+              <select
+                value={bodyType}
+                onChange={(e) => setBodyType(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 capitalize"
+              >
+                {CAR_BODY_TYPES.map((bt) => (
+                  <option key={bt.id} value={bt.id} className="capitalize">{bt.label}</option>
+                ))}
+              </select>
+            </div>
 
-              {/* Mileage */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Mileage (km)</label>
-                <input
-                  type="number"
-                  value={mileage}
-                  onChange={(e) => setMileage(e.target.value)}
-                  placeholder="e.g. 15000"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500 font-mono"
-                />
-              </div>
-
-              {/* Color */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Exterior Color</label>
-                <input
-                  type="text"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  placeholder="e.g. White, Black, Silver"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              {/* Engine */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Engine / Battery</label>
-                <input
-                  type="text"
-                  value={engineCapacity}
-                  onChange={(e) => setEngineCapacity(e.target.value)}
-                  placeholder="e.g. 1.5L Turbo / 60 kWh"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500"
-                />
-              </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Plate Code</label>
+              <select
+                value={plateCode}
+                onChange={(e) => setPlateCode(e.target.value as any)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900"
+              >
+                {ETHIOPIAN_PLATE_CODES.map((pc) => (
+                  <option key={pc.id} value={pc.id}>{pc.label}</option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* Section 3: Price & Location */}
-          <div className="space-y-3">
-            <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
-              3. {lang === 'am' ? 'ዋጋና መገኛ አካባቢ' : 'Price & Location'}
-            </label>
+          {/* SECTION 4: MILEAGE, PRICE & LOCATION */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Mileage (Kilometers)
+              </label>
+              <input
+                type="number"
+                value={mileage}
+                onChange={(e) => setMileage(e.target.value)}
+                placeholder="e.g. 15000"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-mono"
+              />
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                  {type === 'rent' ? 'Rental Price (ETB / month or day) *' : 'Asking Price (ETB) *'}
-                </label>
-                <input
-                  type="number"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="e.g. 4500000"
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500 font-mono font-bold"
-                />
-              </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                {type === 'rent' ? 'Rental Price (ETB / Day)' : 'Price (ETB)'}
+              </label>
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="e.g. 3800000"
+                required
+                className="w-full bg-slate-50 border-2 border-blue-600/60 rounded-xl p-2.5 text-xs text-slate-900 font-mono font-bold focus:outline-none"
+              />
+            </div>
 
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">City *</label>
-                <select
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500"
-                >
-                  {ETHIOPIAN_CITIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Neighborhood / Area *</label>
-                <input
-                  type="text"
-                  value={neighborhood}
-                  onChange={(e) => setNeighborhood(e.target.value)}
-                  placeholder="e.g. Bole, CMC, Sarbet, Hawassa Piazza"
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-blue-500"
-                />
-              </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                City / Location
+              </label>
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900"
+              >
+                {ETHIOPIAN_CITIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* Section 4: Features */}
+          {/* Neighborhood & Color */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Neighborhood / Sub-city
+              </label>
+              <input
+                type="text"
+                value={neighborhood}
+                onChange={(e) => setNeighborhood(e.target.value)}
+                placeholder="e.g. Bole Medhanialem, Kazanchis, Piassa"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Exterior Color
+              </label>
+              <input
+                type="text"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                placeholder="e.g. Pearl White, Silver, Black"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900"
+              />
+            </div>
+          </div>
+
+          {/* SECTION 5: PHOTOS (MULTIPLE PHOTO UPLOADER) */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
-              4. {lang === 'am' ? 'የመኪናው ገጽታዎችና አማራጮች' : 'Vehicle Options & Features'}
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {AVAILABLE_FEATURES.map((feat) => {
-                const isChecked = selectedFeatures.includes(feat);
-                return (
-                  <button
-                    type="button"
-                    key={feat}
-                    onClick={() => handleToggleFeature(feat)}
-                    className={`p-2 rounded-lg text-left border transition-all flex items-center justify-between text-[11px] ${
-                      isChecked
-                        ? 'bg-blue-50 border-blue-500 text-blue-900 font-semibold'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span>{feat}</span>
-                    {isChecked && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Section 5: Photos */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
-              5. {lang === 'am' ? 'የመኪናው ፎቶዎች (እስከ 15)' : 'Vehicle Photos (Up to 15)'}
+            <label className="text-xs font-bold text-slate-700 block">
+              Vehicle Photos (Up to 15 Photos)
             </label>
             
-            <div className="border-2 border-dashed border-slate-300 rounded-2xl p-5 text-center hover:border-blue-500 transition-colors bg-slate-50">
+            <div className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-5 text-center transition bg-slate-50">
+              <Upload className="w-7 h-7 text-slate-400 mx-auto mb-2" />
+              <p className="text-xs font-semibold text-slate-700">
+                Click to upload car images from your phone or device
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Include front, rear, sides, and interior dashboard photos.
+              </p>
               <input
                 type="file"
                 multiple
                 accept="image/*"
                 onChange={handlePhotoUpload}
-                id="carPhotoUpload"
-                className="hidden"
+                className="mt-3 block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
               />
-              <label htmlFor="carPhotoUpload" className="cursor-pointer flex flex-col items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-                  <Upload className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="font-bold text-blue-700 hover:underline">Click to upload photos</span>
-                  <span className="text-slate-500"> or drag and drop</span>
-                </div>
-                <p className="text-[11px] text-slate-400">Exterior, interior, dashboard, and engine bay</p>
-              </label>
             </div>
 
-            {/* Photo Previews */}
             {photos.length > 0 && (
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 pt-2">
-                {photos.map((photo, i) => (
-                  <div key={i} className="relative group h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-900">
-                    <img src={photo} alt="" className="w-full h-full object-cover" />
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 pt-2">
+                {photos.map((p, idx) => (
+                  <div key={idx} className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 group">
+                    <img src={p} alt="uploaded" className="w-full h-full object-cover" />
                     <button
                       type="button"
-                      onClick={() => handleRemovePhoto(i)}
-                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleRemovePhoto(idx)}
+                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-90 hover:opacity-100 transition"
+                      title="Remove"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -583,67 +578,38 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
             )}
           </div>
 
-          {/* Section 6: Description */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
-              6. {lang === 'am' ? 'ተጨማሪ ማብራሪያ' : 'Additional Description'}
-            </label>
-            <textarea
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe condition, accident history, service records, and warranty details..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-900 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          {/* SECTION 7: SELLER NAME & DIRECT BUYER CONTACT (Direct Owner Listing) */}
-          <div className="bg-[#051329] border-2 border-emerald-500/60 rounded-2xl p-4 sm:p-5 text-white space-y-3.5 shadow-lg">
-            
-            <div className="flex items-start justify-between gap-3 border-b border-blue-900/60 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/40">
-                  <User className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-                    <span>{lang === 'am' ? 'የሻጭ ስም እና ቀጥተኛ መገናኛ (ለገዢዎች የሚታይ)' : 'Seller Information & Direct Contact (Visible to Buyers)'}</span>
-                    <span className="bg-emerald-950 text-emerald-300 border border-emerald-600/50 text-[9px] px-2 py-0.5 rounded-full uppercase font-mono font-bold">Direct Listing</span>
-                  </h4>
-                  <p className="text-[11px] text-slate-300">
-                    {lang === 'am'
-                      ? 'በ600 ብር ሲዘረዝሩ ገዢዎች በቀጥታ በስልክ፣ ዋትስአፕ እና ቴሌግራም ያገኙዎታል። የሻጭ ስም ማስገባት ግዴታ ነው፤ ከተለጠፈ በኋላ በአስተዳዳሪ ብቻ ነው የሚቀየረው።'
-                      : 'Once listed for 600 ETB, interested buyers will contact you directly. Seller name is mandatory and cannot be edited by seller once posted (only Admin can edit).'}
-                  </p>
-                </div>
+          {/* SECTION 6: CONFIDENTIAL SELLER CONTACT (DIRECT CONNECTION) */}
+          <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 space-y-4 shadow-md">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-blue-400" />
+                <h3 className="text-xs sm:text-sm font-bold text-white">
+                  {lang === 'am' ? 'የሻጭ/ባለቤት ትክክለኛ መረጃ (Seller Contact)' : 'Seller Direct Contact & Identity'}
+                </h3>
               </div>
+              <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full font-semibold">
+                Direct Buyer Connection
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Seller Full Name */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
-                <label className="text-[11px] font-semibold text-slate-200 block mb-1">
-                  {lang === 'am' ? 'የሻጭ ሙሉ ስም * (ግዴታ - ከተለጠፈ በኋላ አይቀየርም)' : 'Seller Full Name * (Mandatory - Not Editable After Posting)'}
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+                  Full Name (ሻጭ ስም) <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
                   value={sellerName}
                   onChange={(e) => setSellerName(e.target.value)}
-                  placeholder={lang === 'am' ? 'ለምሳሌ፡ ዳዊት ታደሰ' : 'e.g. Dawit Tadesse'}
+                  placeholder="e.g. Dawit Kebede"
                   required
-                  className="w-full bg-slate-950 border border-emerald-500/70 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 font-semibold"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-400"
                 />
-                <span className="text-[10px] text-amber-300/90 block mt-1">
-                  {lang === 'am' 
-                    ? '⚠️ ባዶ መተው አይቻልም። ከተለጠፈ በኋላ በሻጭ አይቀየርም (በአስተዳዳሪ ብቻ)' 
-                    : '⚠️ Cannot be blank. Seller name cannot be edited by seller (only Admin can edit).'}
-                </span>
               </div>
 
-              {/* Primary Phone / WhatsApp */}
               <div>
                 <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                  Primary Phone / WhatsApp *
+                  Primary Phone / WhatsApp (ስልክ ቁጥር) <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="tel"
@@ -651,11 +617,10 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
                   onChange={(e) => setSellerPhone(e.target.value)}
                   placeholder="e.g. 0911223344 or 0715..."
                   required
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 font-mono"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-400 font-mono"
                 />
               </div>
 
-              {/* Alternative Phone */}
               <div>
                 <label className="text-[11px] font-semibold text-slate-300 block mb-1">
                   Alternative Phone (Optional)
@@ -665,11 +630,10 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
                   value={sellerAltPhone}
                   onChange={(e) => setSellerAltPhone(e.target.value)}
                   placeholder="e.g. 0922334455"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 font-mono"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-400 font-mono"
                 />
               </div>
 
-              {/* Telegram */}
               <div>
                 <label className="text-[11px] font-semibold text-slate-300 block mb-1">
                   Telegram Username (Optional)
@@ -679,138 +643,157 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
                   value={sellerTelegram}
                   onChange={(e) => setSellerTelegram(e.target.value)}
                   placeholder="e.g. @dawit_cars"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-blue-400"
                 />
               </div>
+            </div>
+          </div>
 
-              {/* Email */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                  Email Address (Optional)
+          {/* SECTION 7: MANDATORY PAYMENT VERIFICATION FOR NON-ADMINS */}
+          {!isAdminLoggedIn ? (
+            <div className="bg-[#07132B] border-2 border-amber-400 rounded-2xl p-4 sm:p-5 space-y-4 text-white shadow-xl">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 font-black">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-2">
+                      <span>{lang === 'am' ? 'የመኪና መዘርዘሪያ ክፍያ (600 ብር) - ግዴታ' : 'Mandatory Listing Verification: 600 ETB'}</span>
+                      <span className="bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
+                        Required
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-amber-200/90 mt-0.5">
+                      {lang === 'am'
+                        ? 'ያለ ክፍያ ማንም ሰው መኪና መዘርዘር አይችልም (አስተዳዳሪ ብቻ ነው ያለ ክፍያ መዘርዘር የሚችለው)።'
+                        : 'Without payment, no one can list their car to sell. Only admin can list without pay.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Accounts Selection */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* Telebirr Card */}
+                <div 
+                  onClick={() => setListingPaymentMethod('telebirr')}
+                  className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                    listingPaymentMethod === 'telebirr'
+                      ? 'bg-[#0072CE]/20 border-[#0072CE] ring-2 ring-[#0072CE]/40'
+                      : 'bg-slate-900 border-slate-700 opacity-80'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-xs text-sky-400">1. Telebirr Official</span>
+                    <span className="text-[10px] bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded-full font-bold">600 ETB</span>
+                  </div>
+                  <div className="font-mono text-sm font-bold text-white flex items-center justify-between">
+                    <span>0715737393</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopy('0715737393', 'telebirr');
+                      }}
+                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-white px-2 py-1 rounded flex items-center gap-1 transition"
+                    >
+                      {copiedAccount === 'telebirr' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedAccount === 'telebirr' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-1">Account: Charte Cars / Amanuel K.</span>
+                </div>
+
+                {/* CBE Card */}
+                <div 
+                  onClick={() => setListingPaymentMethod('cbe')}
+                  className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                    listingPaymentMethod === 'cbe'
+                      ? 'bg-purple-950/40 border-purple-500 ring-2 ring-purple-500/40'
+                      : 'bg-slate-900 border-slate-700 opacity-80'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-xs text-purple-300">2. CBE (ንግድ ባንክ)</span>
+                    <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold">600 ETB</span>
+                  </div>
+                  <div className="font-mono text-sm font-bold text-white flex items-center justify-between">
+                    <span>1000582914029</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopy('1000582914029', 'cbe');
+                      }}
+                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-white px-2 py-1 rounded flex items-center gap-1 transition"
+                    >
+                      {copiedAccount === 'cbe' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedAccount === 'cbe' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-1">Account: Charte Cars & Marketplace</span>
+                </div>
+              </div>
+
+              {/* Transaction Reference Input (MANDATORY) */}
+              <div className="pt-2 border-t border-slate-700/80">
+                <label className="text-xs font-bold text-white block mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-amber-300">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{lang === 'am' ? 'የክፍያ ደረሰኝ ቁጥር (Transaction Reference ID) - ግዴታ' : 'Enter Payment Receipt / Transaction Reference (REQUIRED)'}</span>
+                  </span>
+                  <span className="text-[10px] text-red-400 font-bold">* Required</span>
                 </label>
                 <input
-                  type="email"
-                  value={sellerEmail}
-                  onChange={(e) => setSellerEmail(e.target.value)}
-                  placeholder="e.g. seller@gmail.com"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
+                  type="text"
+                  value={listingTxnRef}
+                  onChange={(e) => setListingTxnRef(e.target.value)}
+                  placeholder={lang === 'am' ? 'ምሳሌ፡ FT2608... ወይም የቴሌብር ማረጋገጫ ቁጥር' : 'e.g. FT260845920... or Telebirr Txn Number'}
+                  required
+                  className="w-full bg-slate-950 border-2 border-amber-400 rounded-xl p-3 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-amber-300"
                 />
-              </div>
-
-              {/* Preferred Contact Mode */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                  Preferred Contact Mode
-                </label>
-                <select
-                  value={preferredContact}
-                  onChange={(e) => setPreferredContact(e.target.value as any)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-emerald-400"
-                >
-                  <option value="phone">Direct Phone Call</option>
-                  <option value="whatsapp">WhatsApp Message</option>
-                  <option value="telegram">Telegram Chat</option>
-                  <option value="any">Any Mode</option>
-                </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {lang === 'am'
+                    ? 'ክፍያውን ካጠናቀቁ በኋላ የሚደርስዎትን የደረሰኝ ቁጥር ያስገቡ። አስተዳዳሪ ፈትሾ ወዲያውኑ ያጸድቃል።'
+                    : 'Enter the transaction reference code provided by Telebirr or CBE after sending 600 ETB.'}
+                </p>
               </div>
             </div>
-
-            {/* Viewing Notes */}
-            <div>
-              <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                Admin & Inspection Availability Notes
-              </label>
-              <input
-                type="text"
-                value={sellerNotes}
-                onChange={(e) => setSellerNotes(e.target.value)}
-                placeholder="e.g. Car parked in Bole showroom, available for inspection weekends"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
-              />
-            </div>
-
-          </div>
-
-          {/* SECTION 8: OPTIONAL GOLD FEATURED PROMOTION & TELEBIRR / CBE CHECKOUT */}
-          <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-amber-950/30 border border-amber-500/40 rounded-2xl p-4 sm:p-5 space-y-3">
-            <div className="flex items-start justify-between gap-3">
+          ) : (
+            /* Admin Free Notice */
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 flex items-center justify-between text-white">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-                    <span>{lang === 'am' ? 'የጎልድ ማስታወቂያ ማሳደጊያ (Gold Featured Upgrade)' : 'Gold Featured Listing Upgrade (600 ETB)'}</span>
-                    <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">5x Views</span>
-                  </h4>
-                  <p className="text-[11px] text-slate-300">
-                    {lang === 'am'
-                      ? 'መኪናዎ በመነሻ ገጽ አናት ላይ በወርቃማ ባጅ ጎልቶ ይታያል። በቴሌብር ወይም በንግድ ባንክ 600 ብር ይክፈሉ።'
-                      : 'Pin your vehicle at the top of the marketplace with a Gold Verified badge for maximum buyer calls.'}
-                  </p>
-                </div>
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                <span className="text-xs font-bold">
+                  {lang === 'am' ? 'የአስተዳዳሪ ነጻ መዘርዘሪያ ክፍት ነው (Admin Free Listing Allowed)' : 'Admin Bypass Active: Listing Fee Waived'}
+                </span>
               </div>
-
-              <input
-                type="checkbox"
-                id="featuredToggle"
-                checked={isFeaturedPromotion}
-                onChange={(e) => setIsFeaturedPromotion(e.target.checked)}
-                className="w-5 h-5 rounded text-amber-500 focus:ring-amber-400 border-slate-700 bg-slate-950 mt-1 cursor-pointer"
-              />
+              <span className="text-[11px] font-mono text-emerald-400 font-bold">0.00 ETB (Free)</span>
             </div>
-
-            {isFeaturedPromotion && (
-              <div className="pt-2 border-t border-amber-500/20 space-y-3 animate-in fade-in">
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-slate-300">Pay via:</span>
-                  <button
-                    type="button"
-                    onClick={() => setFeaturedPaymentMethod('telebirr')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
-                      featuredPaymentMethod === 'telebirr'
-                        ? 'bg-[#0072CE] text-white'
-                        : 'bg-slate-800 text-slate-300'
-                    }`}
-                  >
-                    Telebirr (0715737393)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFeaturedPaymentMethod('cbe')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
-                      featuredPaymentMethod === 'cbe'
-                        ? 'bg-[#8B1874] text-white'
-                        : 'bg-slate-800 text-slate-300'
-                    }`}
-                  >
-                    CBE (1000582914029)
-                  </button>
-                </div>
-
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                    Enter 600 ETB Transfer Reference ID (Optional proof)
-                  </label>
-                  <input
-                    type="text"
-                    value={featuredTxnRef}
-                    onChange={(e) => setFeaturedTxnRef(e.target.value)}
-                    placeholder="e.g. FT2608... or Telebirr Txn"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white placeholder-slate-500 font-mono"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Submit Button */}
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full bg-[#003399] hover:bg-blue-800 text-white font-bold text-sm py-3.5 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-wider"
+              className={`w-full text-white font-bold text-sm py-3.5 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer ${
+                isAdminLoggedIn 
+                  ? 'bg-emerald-600 hover:bg-emerald-500' 
+                  : 'bg-[#003399] hover:bg-blue-800'
+              }`}
             >
-              <span>{lang === 'am' ? 'መኪናውን አትም (Publish Vehicle)' : 'Publish Vehicle Listing'}</span>
+              {isAdminLoggedIn ? (
+                <>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>{lang === 'am' ? 'እንደ አስተዳዳሪ አትም (Admin Publish Free)' : 'Publish Vehicle (Admin Free)'}</span>
+                </>
+              ) : (
+                <>
+                  <CreditCard className="w-4 h-4" />
+                  <span>{lang === 'am' ? 'ክፍያውን አረጋግጥና መኪናውን አትም (Submit with 600 ETB Payment)' : 'Submit Vehicle Listing (600 ETB Verified)'}</span>
+                </>
+              )}
             </button>
           </div>
 

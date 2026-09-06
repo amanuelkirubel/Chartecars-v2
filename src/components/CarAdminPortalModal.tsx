@@ -48,8 +48,6 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
   onLoginSuccess,
   onLogout,
 }) => {
-  if (!isOpen) return null;
-
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return isAdminLoggedIn ?? (localStorage.getItem('charte_admin_auth') === 'true');
@@ -155,6 +153,8 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
   const ownerSubmissionsCount = cars.filter((c) => c.sellerType === 'owner').length;
   const activeCount = cars.filter((c) => c.status === 'active').length;
   const soldCount = cars.filter((c) => c.status === 'sold').length;
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6 animate-fade-in">
@@ -351,11 +351,23 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
                   onClick={() => setActiveTab('active')}
                   className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
                     activeTab === 'active'
-                      ? 'bg-blue-700 text-white'
+                      ? 'bg-emerald-700 text-white shadow-sm'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  Active
+                  Listed / Active ({activeCount})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('urgent')}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                    activeTab === 'urgent'
+                      ? 'bg-yellow-400 text-slate-950 font-black shadow-sm'
+                      : 'bg-yellow-50 text-yellow-800 hover:bg-yellow-100 border border-yellow-200'
+                  }`}
+                >
+                  Urgent ({cars.filter((c) => c.status === 'urgent').length})
                 </button>
 
                 <button
@@ -363,11 +375,11 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
                   onClick={() => setActiveTab('sold')}
                   className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
                     activeTab === 'sold'
-                      ? 'bg-amber-700 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-red-600 text-white shadow-sm'
+                      : 'bg-red-50 text-red-800 hover:bg-red-100 border border-red-200'
                   }`}
                 >
-                  Sold
+                  Sold ({soldCount})
                 </button>
               </div>
 
@@ -427,18 +439,18 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
                           <select
                             value={car.status || 'active'}
                             onChange={(e) => handleStatusChange(car, e.target.value as ListingStatus)}
-                            className={`text-xs font-bold rounded-lg px-2.5 py-1 border transition-colors ${
+                            className={`text-xs font-bold rounded-lg px-2.5 py-1 border transition-colors shadow-sm ${
                               car.status === 'sold'
-                                ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                ? 'bg-red-600 text-white border-red-500 font-black'
                                 : car.status === 'urgent'
-                                ? 'bg-red-100 text-red-800 border-red-300'
-                                : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                ? 'bg-yellow-400 text-slate-950 border-yellow-300 font-black'
+                                : 'bg-emerald-600 text-white border-emerald-500 font-bold'
                             }`}
                           >
-                            <option value="active">Active (On Market)</option>
-                            <option value="urgent">Urgent Deal</option>
-                            <option value="sold">Sold</option>
-                            <option value="pending">Pending</option>
+                            <option value="active" className="bg-white text-emerald-800 font-bold">🟢 Listed / Active (Green)</option>
+                            <option value="urgent" className="bg-white text-amber-700 font-bold">🟡 Urgent Deal (Yellow)</option>
+                            <option value="sold" className="bg-white text-red-700 font-bold">🔴 Sold (Red)</option>
+                            <option value="pending" className="bg-white text-slate-700">⚪ Pending Verification</option>
                           </select>
 
                           <button

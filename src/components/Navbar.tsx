@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   User,
   LogOut,
-  CreditCard
+  CreditCard,
+  Search
 } from 'lucide-react';
 import { CharteLogo } from './CharteLogo';
 import { Language, Currency, ListingType } from '../types';
@@ -29,6 +30,7 @@ interface NavbarProps {
   onOpenListCar: () => void;
   onOpenAdmin: () => void;
   onOpenDownloadApp: () => void;
+  onOpenSearch: () => void;
   onOpenPaymentDesk?: () => void;
   onOpenAbout?: () => void;
   isAdminLoggedIn?: boolean;
@@ -47,6 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenListCar,
   onOpenAdmin,
   onOpenDownloadApp,
+  onOpenSearch,
   onOpenPaymentDesk,
   onOpenAbout,
   isAdminLoggedIn = false,
@@ -111,17 +114,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               {lang === 'am' ? 'የእኔ ዝርዝሮች (MY LISTINGS)' : 'MY LISTINGS'}
             </button>
 
-            {/* Pay / Deposit Button (Telebirr & CBE) */}
-            {onOpenPaymentDesk && (
-              <button
-                onClick={onOpenPaymentDesk}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600/40 border border-blue-400/60 text-blue-200 hover:bg-blue-600 hover:text-white transition text-xs font-bold shadow"
-                title="Telebirr & CBE Payment Desk"
-              >
-                <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{lang === 'am' ? 'ክፍያና ማስያዣ' : 'Pay / Deposit'}</span>
-              </button>
-            )}
+            {/* Search Option Button (Replaced Pay / Deposit in this exact location) */}
+            <button
+              onClick={onOpenSearch}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-600/50 border border-blue-400/70 text-blue-100 hover:bg-blue-600 hover:text-white transition text-xs font-bold shadow active:scale-95 cursor-pointer"
+              title="Search Vehicles & Filters"
+            >
+              <Search className="w-3.5 h-3.5 text-blue-300" />
+              <span>{lang === 'am' ? 'መኪና ፈልግ (Search)' : 'Search'}</span>
+            </button>
 
             {/* Download Option button in Top Navy Bar */}
             <button
@@ -297,15 +298,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <div className="pt-2 border-t border-blue-950 flex flex-col gap-2 text-xs">
-            {onOpenPaymentDesk && (
-              <button 
-                onClick={() => { onOpenPaymentDesk(); setMobileMenuOpen(false); }}
-                className="w-full bg-blue-600/50 border border-blue-400/60 p-2.5 rounded-xl font-bold flex items-center justify-center gap-2 text-white"
-              >
-                <CreditCard className="w-4 h-4 text-emerald-400" />
-                <span>{lang === 'am' ? 'የክፍያና ማስያዣ ዴስክ (Telebirr / CBE)' : 'Secure Payment & Deposit Desk'}</span>
-              </button>
-            )}
+            <button 
+              onClick={() => { onOpenSearch(); setMobileMenuOpen(false); }}
+              className="w-full bg-blue-600 border border-blue-400/70 p-2.5 rounded-xl font-bold flex items-center justify-center gap-2 text-white shadow cursor-pointer active:scale-95"
+            >
+              <Search className="w-4 h-4 text-blue-200" />
+              <span>{lang === 'am' ? 'መኪና ፈልግ (Search Vehicles)' : 'Search Vehicles & Filters'}</span>
+            </button>
 
             <div className="flex justify-between items-center pt-1">
               {isAdminLoggedIn ? (

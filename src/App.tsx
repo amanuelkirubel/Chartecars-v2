@@ -41,6 +41,7 @@ import { DownloadAppModal } from './components/DownloadAppModal';
 import { CarPaymentModal, ReservationReceipt } from './components/CarPaymentModal';
 import { AboutCharteCarsModal } from './components/AboutCharteCarsModal';
 import { AboutCharteCarsSection } from './components/AboutCharteCarsSection';
+import { CarSearchModal } from './components/CarSearchModal';
 import { Footer } from './components/Footer';
 
 const STORAGE_KEY_CARS = 'charte_cars_listings_v1';
@@ -135,6 +136,9 @@ export default function App() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentTargetCar, setPaymentTargetCar] = useState<CarListing | null>(null);
   const [paymentPurpose, setPaymentPurpose] = useState<'reservation' | 'down_payment' | 'listing_fee'>('reservation');
+
+  // Search Modal State (Triggered from Navbar and Hero search button)
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   const handleOpenPayment = (
     car: CarListing | null, 
@@ -319,6 +323,7 @@ export default function App() {
         onOpenListCar={() => setIsListCarModalOpen(true)}
         onOpenAdmin={() => setIsCarAdminModalOpen(true)}
         onOpenDownloadApp={() => setIsDownloadModalOpen(true)}
+        onOpenSearch={() => setIsSearchModalOpen(true)}
         onOpenPaymentDesk={() => handleOpenPayment(null, 'listing_fee')}
         onOpenAbout={() => setIsAboutModalOpen(true)}
         isAdminLoggedIn={isAdminLoggedIn}
@@ -327,9 +332,8 @@ export default function App() {
 
       {/* 3. Hero Section for Charte Cars (FIND A CAR YOU CAN ACTUALLY SEE YOURSELF IN.) */}
       <CarHeroSection
-        filters={carFilters}
-        onFilterChange={handleCarFilterChange}
-        onResetFilters={handleResetCarFilters}
+        onOpenSearch={() => setIsSearchModalOpen(true)}
+        onOpenListCar={() => setIsListCarModalOpen(true)}
         lang={lang}
         totalCarsCount={filteredCars.length}
       />
@@ -490,12 +494,24 @@ export default function App() {
         />
       )}
 
-      {/* List a Car Modal (CONFIDENTIAL SELLER CONTACT DETAILS) */}
+      {/* List a Car Modal (Requires Payment for Non-Admins, Free for Admin) */}
       <ListCarModal
         isOpen={isListCarModalOpen}
         onClose={() => setIsListCarModalOpen(false)}
         onAddCar={handleAddCar}
         lang={lang}
+        isAdminLoggedIn={isAdminLoggedIn}
+      />
+
+      {/* Vehicle Search & Filters Modal (Triggered via Navbar Search button) */}
+      <CarSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        filters={carFilters}
+        onFilterChange={handleCarFilterChange}
+        onResetFilters={handleResetCarFilters}
+        lang={lang}
+        totalResults={filteredCars.length}
       />
 
       {/* Admin Portal Modal (Protected with Admin Email & Password) */}

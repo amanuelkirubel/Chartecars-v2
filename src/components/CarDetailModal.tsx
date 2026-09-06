@@ -66,6 +66,18 @@ export const CarDetailModal: React.FC<CarDetailModalProps> = ({
 
   const inquiryMessage = `Hello Charte Cars, I am interested in this vehicle:\n\n🚗 ${car.year} ${car.make} ${car.model}\n💰 Price: ${car.price.toLocaleString()} ETB\n📍 Location: ${car.city}, ${car.neighborhood}\n🆔 Reference ID: #${car.id}\n\nPlease let me know if it is available for inspection.`;
 
+  const sellerPhone = car.sellerContact?.phone || '0715737393';
+  const sellerName = car.sellerContact?.name || (lang === 'am' ? 'የመኪናው ባለቤት' : 'Vehicle Owner');
+  const sellerTelegram = car.sellerContact?.telegram;
+  const sellerAltPhone = car.sellerContact?.altPhone;
+  const sellerPhoneClean = sellerPhone.replace(/[^0-9]/g, '');
+  const waPhone = sellerPhoneClean.startsWith('0') 
+    ? '251' + sellerPhoneClean.substring(1) 
+    : (sellerPhoneClean.startsWith('251') ? sellerPhoneClean : '251' + sellerPhoneClean);
+  const sellerWaMsg = encodeURIComponent(
+    `Hello ${sellerName}, I am interested in viewing / purchasing your car: ${car.year} ${car.make} ${car.model} (${car.price.toLocaleString()} ETB, Ref: #${car.id}) on Charte Cars.`
+  );
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 md:p-6 animate-fade-in">
       <div className="relative w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden my-6 border border-slate-200">
@@ -73,6 +85,24 @@ export const CarDetailModal: React.FC<CarDetailModalProps> = ({
         {/* Modal Sticky Header */}
         <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3.5 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
+            {/* Status Mark: Sold Red, Urgent Yellow, List Green */}
+            {car.status === 'sold' ? (
+              <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-red-600 text-white border border-red-500 shadow-sm flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                <span>{lang === 'am' ? 'የተሸጠ (SOLD)' : 'SOLD'}</span>
+              </span>
+            ) : car.status === 'urgent' ? (
+              <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-yellow-400 text-slate-950 border border-yellow-300 shadow-sm flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />
+                <span>{lang === 'am' ? 'አጣዳፊ (URGENT)' : 'URGENT'}</span>
+              </span>
+            ) : (
+              <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-600 text-white border border-emerald-500 shadow-sm flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-200" />
+                <span>{lang === 'am' ? 'በዝርዝር ላይ (LISTED)' : 'LISTED'}</span>
+              </span>
+            )}
+
             <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${
               car.type === 'rent' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
             }`}>
@@ -320,103 +350,87 @@ export const CarDetailModal: React.FC<CarDetailModalProps> = ({
           </div>
 
           {/* Direct Seller Contact & Buyer Connection Panel */}
-          {(() => {
-            const sellerPhone = car.sellerContact?.phone || '0715737393';
-            const sellerName = car.sellerContact?.name || (lang === 'am' ? 'የመኪናው ባለቤት' : 'Vehicle Owner');
-            const sellerTelegram = car.sellerContact?.telegram;
-            const sellerAltPhone = car.sellerContact?.altPhone;
-            const sellerPhoneClean = sellerPhone.replace(/[^0-9]/g, '');
-            const waPhone = sellerPhoneClean.startsWith('0') 
-              ? '251' + sellerPhoneClean.substring(1) 
-              : (sellerPhoneClean.startsWith('251') ? sellerPhoneClean : '251' + sellerPhoneClean);
-            const sellerWaMsg = encodeURIComponent(
-              `Hello ${sellerName}, I am interested in viewing / purchasing your car: ${car.year} ${car.make} ${car.model} (${car.price.toLocaleString()} ETB, Ref: #${car.id}) on Charte Cars.`
-            );
-
-            return (
-              <div className="bg-gradient-to-br from-[#051329] to-[#0A224A] text-white p-5 sm:p-6 rounded-2xl border border-blue-800/60 shadow-xl space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-900/60 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0">
-                      <User className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                        <span>{lang === 'am' ? 'የሻጩ ቀጥተኛ መገናኛ' : 'Direct Seller Contact'}</span>
-                        <span className="text-emerald-400 font-mono font-normal">({sellerName})</span>
-                      </h4>
-                      <p className="text-xs text-slate-300">
-                        {lang === 'am' 
-                          ? 'ከባለቤቱ ጋር በቀጥታ ይደራደሩ፤ ምንም አይነት የደላላ ኮሚሽን የለም።' 
-                          : 'Deal directly with the verified seller — 0% middleman and zero broker markups.'}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="bg-emerald-950 text-emerald-300 border border-emerald-700/60 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider self-start sm:self-auto">
-                    {lang === 'am' ? '0% ኮሚሽን (ቀጥተኛ)' : '0% Commission Direct'}
-                  </span>
+          <div className="bg-gradient-to-br from-[#051329] to-[#0A224A] text-white p-5 sm:p-6 rounded-2xl border border-blue-800/60 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-900/60 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                  <User className="w-5 h-5" />
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Phone Call Seller */}
-                  <a
-                    href={`tel:${sellerPhone}`}
-                    className="bg-[#003399] hover:bg-blue-600 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all font-mono"
-                  >
-                    <PhoneCall className="w-4 h-4" />
-                    <span>{lang === 'am' ? 'ለሻጩ ይደውሉ' : 'Call Seller'}: {sellerPhone}</span>
-                  </a>
-
-                  {/* WhatsApp Direct */}
-                  <a
-                    href={`https://wa.me/${waPhone}?text=${sellerWaMsg}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    <span>Chat on WhatsApp</span>
-                  </a>
-
-                  {/* Telegram */}
-                  {sellerTelegram ? (
-                    <a
-                      href={`https://t.me/${sellerTelegram.replace('@', '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
-                    >
-                      <Send className="w-4 h-4" />
-                      <span>Telegram: {sellerTelegram}</span>
-                    </a>
-                  ) : (
-                    <a
-                      href="https://t.me/charte7"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
-                    >
-                      <Send className="w-4 h-4" />
-                      <span>Telegram: @charte7</span>
-                    </a>
-                  )}
-                </div>
-
-                <div className="text-[11px] text-slate-400 text-center pt-1 border-t border-blue-950/80">
-                  {sellerAltPhone && (
-                    <span className="block sm:inline mr-2">
-                      {lang === 'am' ? 'ተጨማሪ ስልክ:' : 'Alt Phone:'} <strong className="text-slate-300 font-mono">{sellerAltPhone}</strong> &bull;{' '}
-                    </span>
-                  )}
-                  <span>
-                    {lang === 'am'
-                      ? 'የሻጭ ስም በምዝገባ የተረጋገጠ ሲሆን በአስተዳዳሪ ብቻ ነው የሚቀየረው። የቻርቴ እገዛ ዴስክ፡ 0715737393'
-                      : 'Seller name is verified and cannot be edited by seller (Admin only). Charte Assistance: 0715737393'}
-                  </span>
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>{lang === 'am' ? 'የሻጩ ቀጥተኛ መገናኛ' : 'Direct Seller Contact'}</span>
+                    <span className="text-emerald-400 font-mono font-normal">({sellerName})</span>
+                  </h4>
+                  <p className="text-xs text-slate-300">
+                    {lang === 'am' 
+                      ? 'ከባለቤቱ ጋር በቀጥታ ይደራደሩ፤ ምንም አይነት የደላላ ኮሚሽን የለም።' 
+                      : 'Deal directly with the verified seller — 0% middleman and zero broker markups.'}
+                  </p>
                 </div>
               </div>
-            );
-          })()}
+              <span className="bg-emerald-950 text-emerald-300 border border-emerald-700/60 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider self-start sm:self-auto">
+                {lang === 'am' ? '0% ኮሚሽን (ቀጥተኛ)' : '0% Commission Direct'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Phone Call Seller */}
+              <a
+                href={`tel:${sellerPhone}`}
+                className="bg-[#003399] hover:bg-blue-600 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all font-mono"
+              >
+                <PhoneCall className="w-4 h-4" />
+                <span>{lang === 'am' ? 'ለሻጩ ይደውሉ' : 'Call Seller'}: {sellerPhone}</span>
+              </a>
+
+              {/* WhatsApp Direct */}
+              <a
+                href={`https://wa.me/${waPhone}?text=${sellerWaMsg}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>Chat on WhatsApp</span>
+              </a>
+
+              {/* Telegram */}
+              {sellerTelegram ? (
+                <a
+                  href={`https://t.me/${sellerTelegram.replace('@', '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Telegram: {sellerTelegram}</span>
+                </a>
+              ) : (
+                <a
+                  href="https://t.me/charte7"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Telegram: @charte7</span>
+                </a>
+              )}
+            </div>
+
+            <div className="text-[11px] text-slate-400 text-center pt-1 border-t border-blue-950/80">
+              {sellerAltPhone && (
+                <span className="block sm:inline mr-2">
+                  {lang === 'am' ? 'ተጨማሪ ስልክ:' : 'Alt Phone:'} <strong className="text-slate-300 font-mono">{sellerAltPhone}</strong> &bull;{' '}
+                </span>
+              )}
+              <span>
+                {lang === 'am'
+                  ? 'የሻጭ ስም በምዝገባ የተረጋገጠ ሲሆን በአስተዳዳሪ ብቻ ነው የሚቀየረው። የቻርቴ እገዛ ዴስክ፡ 0715737393'
+                  : 'Seller name is verified and cannot be edited by seller (Admin only). Charte Assistance: 0715737393'}
+              </span>
+            </div>
+          </div>
 
         </div>
 

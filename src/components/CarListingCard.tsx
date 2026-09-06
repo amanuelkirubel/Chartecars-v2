@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Car, 
   MapPin, 
@@ -8,9 +8,13 @@ import {
   ShieldCheck, 
   Heart, 
   Eye, 
+  ChevronLeft,
   ChevronRight, 
   Calendar,
-  User 
+  User,
+  AlertCircle,
+  Tag,
+  CheckCircle2
 } from 'lucide-react';
 import { CarListing, Language, Currency } from '../types';
 
@@ -31,6 +35,10 @@ export const CarListingCard: React.FC<CarListingCardProps> = ({
   lang,
   currency,
 }) => {
+  // Direct photo navigation state right on the card (without entering inside)
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+
   const formatPrice = (amount: number) => {
     if (currency === 'USD') {
       const usdRate = 145; // Approx ETB to USD
@@ -54,25 +62,119 @@ export const CarListingCard: React.FC<CarListingCardProps> = ({
 
   const conditionBadge = getConditionBadge();
 
+  // Color Requirements:
+  // 1. Sold mark: RED
+  // 2. Urgent mark: YELLOW
+  // 3. List mark: GREEN
+  const getStatusBadge = () => {
+    if (car.status === 'sold') {
+      return {
+        label: lang === 'am' ? 'የተሸጠ (SOLD)' : 'SOLD',
+        bg: 'bg-red-600 text-white border-red-500 shadow-red-900/30',
+        dot: 'bg-white'
+      };
+    }
+    if (car.status === 'urgent') {
+      return {
+        label: lang === 'am' ? 'አጣዳፊ (URGENT)' : 'URGENT',
+        bg: 'bg-yellow-400 text-slate-950 font-black border-yellow-300 shadow-amber-900/30',
+        dot: 'bg-slate-950'
+      };
+    }
+    // Default or active status: GREEN "LISTED"
+    return {
+      label: lang === 'am' ? 'በዝርዝር ላይ (LISTED)' : 'LISTED',
+      bg: 'bg-emerald-600 text-white border-emerald-400/70 shadow-emerald-900/30',
+      dot: 'bg-emerald-200'
+    };
+  };
+
+  const statusBadge = getStatusBadge();
+
+  const handlePrevPhoto = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (car.photos && car.photos.length > 1) {
+      setCurrentPhotoIndex((prev) => (prev > 0 ? prev - 1 : car.photos.length - 1));
+    }
+  };
+
+  const handleNextPhoto = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (car.photos && car.photos.length > 1) {
+      setCurrentPhotoIndex((prev) => (prev < car.photos.length - 1 ? prev + 1 : 0));
+    }
+  };
+
+  // Touch swipe handlers to change photo on mobile without entering
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX.current - touchEndX;
+    if (Math.abs(diff) > 40 && car.photos && car.photos.length > 1) {
+      if (diff > 0) {
+        // Swipe left -> Next photo
+        setCurrentPhotoIndex((prev) => (prev < car.photos.length - 1 ? prev + 1 : 0));
+      } else {
+        // Swipe right -> Prev photo
+        setCurrentPhotoIndex((prev) => (prev > 0 ? prev - 1 : car.photos.length - 1));
+      }
+    }
+    touchStartX.current = null;
+  };
+
+  const sellerPhoneRaw = car.sellerContact?.phone?.replace(/[^0-9]/g, '') || '';
+  const waPhone = sellerPhoneRaw
+    ? (sellerPhoneRaw.startsWith('0') ? `251${sellerPhoneRaw.substring(1)}` : (sellerPhoneRaw.startsWith('251') ? sellerPhoneRaw : `251${sellerPhoneRaw}`))
+    : '251715737393';
+  const sellerText = encodeURIComponent(
+    `Hello ${car.sellerContact?.name || 'Seller'}, I found your car on Charte Cars: ${car.year} ${car.make} ${car.model} (${car.price.toLocaleString()} ETB, Ref: #${car.id}). I am interested in viewing / purchasing it.`
+  );
+
+  const activePhoto = (car.photos && car.photos[currentPhotoIndex]) || car.photos?.[0] || 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80';
+
   return (
     <div 
-      className="group bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between"
+      className="group bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between relative"
     >
       <div>
-        {/* Photo Container & Badges */}
-        <div className="relative h-56 sm:h-60 overflow-hidden bg-slate-900 cursor-pointer" onClick={() => onSelect(car)}>
+        {/* Photo Container & Interactive Navigation Directly on Card */}
+        <div 
+          className="relative h-56 sm:h-64 overflow-hidden bg-slate-950 cursor-pointer select-none" 
+          onClick={() => onSelect(car)}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           <img 
-            src={car.photos[0]} 
+            src={activePhoto} 
             alt={car.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
           />
           
           {/* Top Gradient for text contrast */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/30 pointer-events-none" />
 
-          {/* Top Left Badges */}
-          <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 z-10">
+          {/* Sold Overlay Stamp if marked sold */}
+          {car.status === 'sold' && (
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] pointer-events-none flex items-center justify-center z-15">
+              <span className="bg-red-600/95 text-white font-black text-sm sm:text-base uppercase px-5 py-2 rounded-xl shadow-2xl tracking-widest border border-white/40 rotate-[-7deg]">
+                {lang === 'am' ? 'የተሸጠ • SOLD' : 'SOLD • የተሸጠ'}
+              </span>
+            </div>
+          )}
+
+          {/* Top Left Badges: Status (Sold=Red, Urgent=Yellow, List=Green), Type, Plate */}
+          <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 z-20">
+            {/* Status Badge: SOLD (Red) | URGENT (Yellow) | LISTED (Green) */}
+            <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border shadow-md flex items-center gap-1 backdrop-blur-md ${statusBadge.bg}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`} />
+              <span>{statusBadge.label}</span>
+            </span>
+
             {/* Sale or Rent */}
             <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm ${
               car.type === 'rent'
@@ -96,7 +198,7 @@ export const CarListingCard: React.FC<CarListingCardProps> = ({
           </div>
 
           {/* Top Right Favorite Button */}
-          <div className="absolute top-3 right-3 z-10">
+          <div className="absolute top-3 right-3 z-20">
             <button
               type="button"
               onClick={(e) => {
@@ -106,7 +208,7 @@ export const CarListingCard: React.FC<CarListingCardProps> = ({
               className={`p-2.5 rounded-full backdrop-blur-md transition-all ${
                 isFavorite 
                   ? 'bg-red-500 text-white shadow-lg shadow-red-500/40 scale-110' 
-                  : 'bg-black/40 text-white hover:bg-black/70'
+                  : 'bg-black/50 text-white hover:bg-black/80'
               }`}
               title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
             >
@@ -114,23 +216,52 @@ export const CarListingCard: React.FC<CarListingCardProps> = ({
             </button>
           </div>
 
-          {/* Bottom Photo Overlay Info */}
-          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white z-10">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-blue-400" />
-                <span>{car.year}</span>
-              </span>
-              <span className="text-xs font-bold bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1">
-                <Gauge className="w-3.5 h-3.5 text-amber-400" />
-                <span>{car.mileage.toLocaleString()} km</span>
-              </span>
-            </div>
+          {/* DIRECT PHOTO SWITCHING ARROWS ON CARD (Changeable without entering inside) */}
+          {car.photos && car.photos.length > 1 && (
+            <>
+              {/* Left Arrow Button */}
+              <button
+                type="button"
+                onClick={handlePrevPhoto}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-sm border border-white/30 transition-all shadow-lg active:scale-90 opacity-90 hover:opacity-100"
+                title="Previous photo"
+                aria-label="Previous photo"
+              >
+                <ChevronLeft className="w-5 h-5 text-white" />
+              </button>
 
+              {/* Right Arrow Button */}
+              <button
+                type="button"
+                onClick={handleNextPhoto}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-sm border border-white/30 transition-all shadow-lg active:scale-90 opacity-90 hover:opacity-100"
+                title="Next photo"
+                aria-label="Next photo"
+              >
+                <ChevronRight className="w-5 h-5 text-white" />
+              </button>
+
+              {/* Photo Counter Badge (e.g. 2 / 2 like user's screenshot) */}
+              <div className="absolute bottom-3 right-3 z-20 bg-black/75 backdrop-blur-md text-white font-mono text-[11px] font-bold px-2.5 py-1 rounded-lg border border-white/20 shadow">
+                {currentPhotoIndex + 1} / {car.photos.length}
+              </div>
+            </>
+          )}
+
+          {/* Bottom Left Photo Overlay Info */}
+          <div className="absolute bottom-3 left-3 flex items-center gap-2 text-white z-15">
+            <span className="text-xs font-bold bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1 border border-white/10">
+              <Calendar className="w-3.5 h-3.5 text-blue-400" />
+              <span>{car.year}</span>
+            </span>
+            <span className="text-xs font-bold bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1 border border-white/10">
+              <Gauge className="w-3.5 h-3.5 text-amber-400" />
+              <span>{car.mileage.toLocaleString()} km</span>
+            </span>
             {car.fuelType === 'electric' && (
               <span className="text-[11px] font-bold bg-emerald-500/90 text-white px-2 py-0.5 rounded-lg flex items-center gap-1 shadow">
                 <Zap className="w-3 h-3" />
-                <span>100% EV</span>
+                <span>EV</span>
               </span>
             )}
           </div>
@@ -158,7 +289,7 @@ export const CarListingCard: React.FC<CarListingCardProps> = ({
             {lang === 'am' && car.titleAm ? car.titleAm : car.title}
           </h3>
 
-          {/* Tech Spec Chips (Transmission, Fuel, Engine) */}
+          {/* Tech Spec Chips (Transmission, Fuel, Color) */}
           <div className="flex flex-wrap items-center gap-2 py-1 text-xs text-slate-600 border-y border-slate-100">
             <div className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-md font-medium">
               <span className="text-slate-400">⚙️</span>
@@ -214,32 +345,21 @@ export const CarListingCard: React.FC<CarListingCardProps> = ({
         <button
           type="button"
           onClick={() => onSelect(car)}
-          className="flex-1 bg-slate-900 hover:bg-[#003399] text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+          className="flex-1 bg-slate-900 hover:bg-[#003399] text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
         >
           <Eye className="w-3.5 h-3.5" />
           <span>{lang === 'am' ? 'ዝርዝር መረጃ' : 'View Specs'}</span>
         </button>
 
-        {(() => {
-          const sellerPhoneRaw = car.sellerContact?.phone?.replace(/[^0-9]/g, '') || '';
-          const waPhone = sellerPhoneRaw
-            ? (sellerPhoneRaw.startsWith('0') ? `251${sellerPhoneRaw.substring(1)}` : (sellerPhoneRaw.startsWith('251') ? sellerPhoneRaw : `251${sellerPhoneRaw}`))
-            : '251715737393';
-          const sellerText = encodeURIComponent(
-            `Hello ${car.sellerContact?.name || 'Seller'}, I found your car on Charte Cars: ${car.year} ${car.make} ${car.model} (${car.price.toLocaleString()} ETB, Ref: #${car.id}). I am interested in viewing / purchasing it.`
-          );
-          return (
-            <a
-              href={`https://wa.me/${waPhone}?text=${sellerText}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 shadow-sm"
-              title={car.sellerContact?.name ? `WhatsApp ${car.sellerContact.name}` : 'Contact Seller on WhatsApp'}
-            >
-              <span>WhatsApp</span>
-            </a>
-          );
-        })()}
+        <a
+          href={`https://wa.me/${waPhone}?text=${sellerText}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 px-3.5 rounded-xl transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer"
+          title={car.sellerContact?.name ? `WhatsApp ${car.sellerContact.name}` : 'Contact Seller on WhatsApp'}
+        >
+          <span>WhatsApp</span>
+        </a>
       </div>
 
     </div>
