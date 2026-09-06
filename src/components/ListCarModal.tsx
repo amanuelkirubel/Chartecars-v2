@@ -13,7 +13,8 @@ import {
   CreditCard,
   User,
   Copy,
-  Check
+  Check,
+  FileText
 } from 'lucide-react';
 import { CarListing, Language, ListingType } from '../types';
 import { POPULAR_CAR_MAKES, CAR_BODY_TYPES, ETHIOPIAN_PLATE_CODES } from '../data/mockCars';
@@ -26,6 +27,7 @@ interface ListCarModalProps {
   onAddCar?: (newCar: Omit<CarListing, 'id' | 'createdAt' | 'views'>) => void;
   lang: Language;
   isAdminLoggedIn?: boolean;
+  existingCars?: CarListing[];
 }
 
 export const ListCarModal: React.FC<ListCarModalProps> = ({
@@ -35,6 +37,7 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
   onAddCar,
   lang,
   isAdminLoggedIn = false,
+  existingCars = [],
 }) => {
   // Form State
   const [type, setType] = useState<ListingType>('sale');
@@ -74,6 +77,9 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
   // Mandatory Payment Verification State (Enforced: No one can list without pay; only admin can list without pay)
   const [listingPaymentMethod, setListingPaymentMethod] = useState<'telebirr' | 'cbe'>('telebirr');
   const [listingTxnRef, setListingTxnRef] = useState('');
+  const [receiptScreenshot, setReceiptScreenshot] = useState<string | null>(null);
+  const [receiptFileType, setReceiptFileType] = useState<'pdf' | 'image'>('image');
+  const [receiptFileName, setReceiptFileName] = useState<string>('');
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
 
   // Optional Featured Promotion Upgrade
@@ -135,6 +141,23 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
     setTimeout(() => setCopiedAccount(null), 2500);
   };
 
+  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    setReceiptFileType(isPdf ? 'pdf' : 'image');
+    setReceiptFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setReceiptScreenshot(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -165,14 +188,34 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
       return;
     }
 
-    // STRICT PAYMENT ENFORCEMENT:
+    // STRICT PAYMENT ENFORCEMENT & ANTI-REUSE SAFEGUARD:
     // "no one can list their car to sell without pay, only admin can list without pay"
     if (!isAdminLoggedIn) {
       const cleanRef = listingTxnRef.trim();
       if (!cleanRef || cleanRef.length < 5) {
         setErrorMsg(lang === 'am'
           ? 'ክፍያ ሳይፈጽሙ መኪናዎን መዘርዘር አይችሉም! እባክዎ የ600 ብር መዘርዘሪያ ክፍያ በቴሌብር (0715737393) ወይም በንግድ ባንክ (1000582914029) ከፍለው የደረሰኝ ቁጥር (Transaction Reference) ያስገቡ። አስተዳዳሪ (Admin) ብቻ ነው ያለ ክፍያ መዘርዘር የሚችለው።'
-          : 'Payment is required to list! Without payment, no one can list their car to sell. Please complete the 600 ETB listing payment via Telebirr or CBE and provide your Transaction Reference. Only verified administrators can list without pay.');
+          : 'Payment is strictly required! No one can list their car to sell without paying the 600 ETB listing fee. Please pay via Telebirr or CBE and enter your valid transaction reference code. Only verified administrators can list without pay.');
+        return;
+      }
+
+      // CRITICAL CHECK: WHAT IF HE USED TWO TIMES IN ONE TRANSACTION?
+      // 1. Check local registry of previously used transaction references
+      const usedRefs: string[] = JSON.parse(localStorage.getItem('charte_used_txn_refs') || '[]');
+      const isAlreadyInRegistry = usedRefs.some((r) => r.toLowerCase() === cleanRef.toLowerCase());
+
+      // 2. Check all cars already in database/state
+      const isAlreadyInCars = existingCars.some((c) => {
+        const directRef = c.paymentDetails?.transactionRef?.trim().toLowerCase();
+        const inNotes = c.sellerContact?.notes?.toLowerCase();
+        return (directRef && directRef === cleanRef.toLowerCase()) || 
+               (inNotes && inNotes.includes(cleanRef.toLowerCase()));
+      });
+
+      if (isAlreadyInRegistry || isAlreadyInCars) {
+        setErrorMsg(lang === 'am'
+          ? `ይህ የክፍያ ደረሰኝ ቁጥር (${cleanRef}) ከዚህ ቀደም ለሌላ መኪና ጥቅም ላይ ውሏል! አንድ የክፍያ ቁጥር ለሁለት መኪኖች መጠቀም በጥብቅ የተከለከለ ነው። እባክዎ ለዚህ መኪና አዲስ የ600 ብር ክፍያ ይፈጽሙ።`
+          : `⚠️ Duplicate Transaction Reference (${cleanRef})! This payment reference has already been used for another vehicle listing. A transaction reference cannot be reused twice. Each listing requires its own distinct 600 ETB payment.`);
         return;
       }
     }
@@ -183,6 +226,13 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
     ];
 
     const finalTitle = `${year} ${actualMake} ${model} (${condition === 'brand_new' ? 'Brand New' : 'Used'})`;
+
+    // Save used transaction reference to prevent reuse
+    if (!isAdminLoggedIn) {
+      const usedRefs: string[] = JSON.parse(localStorage.getItem('charte_used_txn_refs') || '[]');
+      usedRefs.push(listingTxnRef.trim().toLowerCase());
+      localStorage.setItem('charte_used_txn_refs', JSON.stringify(usedRefs));
+    }
 
     const submitHandler = onSubmit || onAddCar;
     if (submitHandler) {
@@ -206,8 +256,8 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
         photos: defaultPhotos,
         features: selectedFeatures,
         description: description.trim() || `${year} ${actualMake} ${model} available for ${type === 'rent' ? 'rent' : 'sale'} in ${city}. Verified condition.`,
-        // Status: active (Green) on listing
-        status: 'active',
+        // Status: Admin listings go live immediately ('active'). Non-admin listings go to 'pending' verification!
+        status: isAdminLoggedIn ? 'active' : 'pending',
         isFeatured: isFeaturedPromotion,
         sellerType: 'owner',
         sellerContact: {
@@ -217,8 +267,25 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
           email: sellerEmail.trim() || undefined,
           telegram: sellerTelegram.trim() || undefined,
           preferredContact,
-          notes: !isAdminLoggedIn ? `[PAID 600 ETB] Ref: ${listingTxnRef.trim()} via ${listingPaymentMethod.toUpperCase()} | ${sellerNotes}` : `[ADMIN FREE LISTING] | ${sellerNotes}`,
-        }
+          notes: !isAdminLoggedIn 
+            ? `[PAID 600 ETB] Ref: ${listingTxnRef.trim()} via ${listingPaymentMethod.toUpperCase()}${receiptScreenshot ? (receiptFileType === 'pdf' ? ` (PDF Attached: ${receiptFileName})` : ' (Screenshot/Photo Attached)') : ''} | ${sellerNotes}` 
+            : `[ADMIN FREE LISTING] | ${sellerNotes}`,
+        },
+        paymentDetails: !isAdminLoggedIn ? {
+          method: listingPaymentMethod,
+          transactionRef: listingTxnRef.trim(),
+          amount: 600,
+          paidAt: new Date().toISOString(),
+          receiptScreenshot: receiptScreenshot || undefined,
+          receiptFileType: receiptScreenshot ? receiptFileType : undefined,
+          receiptFileName: receiptScreenshot ? receiptFileName : undefined,
+          verifiedByAdmin: false,
+        } : {
+          method: 'admin_waived',
+          amount: 0,
+          paidAt: new Date().toISOString(),
+          verifiedByAdmin: true,
+        },
       });
     }
 
@@ -758,6 +825,85 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
                     ? 'ክፍያውን ካጠናቀቁ በኋላ የሚደርስዎትን የደረሰኝ ቁጥር ያስገቡ። አስተዳዳሪ ፈትሾ ወዲያውኑ ያጸድቃል።'
                     : 'Enter the transaction reference code provided by Telebirr or CBE after sending 600 ETB.'}
                 </p>
+              </div>
+
+              {/* Payment Receipt / PDF / Screenshot / Photo Upload */}
+              <div className="pt-3 border-t border-slate-700/80">
+                <label className="text-xs font-bold text-white block mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-sky-300">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>
+                      {lang === 'am' 
+                        ? 'የደረሰኝ PDF / ፎቶ / ስክሪንሽት (በጣም ይመረጣል)' 
+                        : 'Upload Payment Proof: PDF Receipt, Photo, or Screenshot'}
+                    </span>
+                  </span>
+                  <span className="text-[10px] text-sky-400 font-medium bg-sky-950/60 px-2 py-0.5 rounded-full border border-sky-800/60">
+                    PDF / Photo / Screenshot
+                  </span>
+                </label>
+                <p className="text-[11px] text-slate-400 mb-2">
+                  {lang === 'am'
+                    ? 'የቴሌብር ወይም የንግድ ባንክ (CBE) የክፍያ ማረጋገጫ ፒዲኤፍ (PDF)፣ ስክሪንሽት (Screenshot) ወይም ፎቶ ያያይዙ።'
+                    : 'Attach official CBE or Telebirr customer receipt PDF, mobile app screenshot, or camera photo.'}
+                </p>
+
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf,.pdf"
+                    onChange={handleReceiptUpload}
+                    className="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-500/20 file:text-sky-300 hover:file:bg-sky-500/30 cursor-pointer border border-slate-700/80 rounded-xl p-1 bg-slate-950/50"
+                  />
+
+                  {receiptScreenshot && (
+                    <div className="bg-slate-900 border border-slate-700 rounded-xl p-2.5 flex items-center justify-between">
+                      {receiptFileType === 'pdf' ? (
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-lg bg-red-600/90 text-white flex flex-col items-center justify-center font-black text-[10px] shrink-0 shadow-sm">
+                            <FileText className="w-4 h-4" />
+                            <span>PDF</span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white truncate max-w-[200px] sm:max-w-xs">
+                              {receiptFileName || 'Official_Bank_Receipt.pdf'}
+                            </p>
+                            <p className="text-[10px] text-emerald-400 font-medium">
+                              ✓ Bank/Telebirr PDF Receipt Attached
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden border-2 border-emerald-400 shrink-0 bg-slate-950">
+                            <img src={receiptScreenshot} alt="Receipt Preview" className="w-full h-full object-cover" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white truncate max-w-[200px] sm:max-w-xs">
+                              {receiptFileName || 'Payment_Screenshot.png'}
+                            </p>
+                            <p className="text-[10px] text-emerald-400 font-medium">
+                              ✓ Payment Screenshot / Photo Attached
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReceiptScreenshot(null);
+                          setReceiptFileName('');
+                        }}
+                        className="p-1.5 bg-red-950/60 hover:bg-red-900 text-red-300 rounded-lg text-xs font-bold flex items-center gap-1 border border-red-800/40 transition shrink-0 ml-2"
+                        title="Remove attached receipt"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span className="text-[10px]">Remove</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : (

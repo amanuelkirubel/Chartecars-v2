@@ -18,7 +18,10 @@ import {
   Video, 
   RotateCcw,
   Sparkles,
-  LogOut 
+  LogOut,
+  FileText,
+  Eye,
+  Download
 } from 'lucide-react';
 import { CarListing, Language, ListingStatus, Currency } from '../types';
 
@@ -63,11 +66,19 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
   }, [isAdminLoggedIn]);
 
   // Active filter
-  const [activeTab, setActiveTab] = useState<'all' | 'owner_submissions' | 'active' | 'urgent' | 'sold'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'owner_submissions' | 'active' | 'urgent' | 'sold'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Edit Modal inside admin
   const [editingCar, setEditingCar] = useState<CarListing | null>(null);
+
+  // Receipt Preview Lightbox Modal
+  const [selectedReceiptPreview, setSelectedReceiptPreview] = useState<{
+    url: string;
+    title: string;
+    isPdf: boolean;
+    fileName?: string;
+  } | null>(null);
 
   // Video Settings
   const [heroVideoUrl, setHeroVideoUrl] = useState(() => {
@@ -133,6 +144,7 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
 
   // Filtered cars
   const filteredCars = cars.filter((car) => {
+    if (activeTab === 'pending' && car.status !== 'pending') return false;
     if (activeTab === 'owner_submissions' && car.sellerType !== 'owner') return false;
     if (activeTab === 'active' && car.status !== 'active') return false;
     if (activeTab === 'urgent' && car.status !== 'urgent') return false;
@@ -145,11 +157,13 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
       const matchModel = car.model.toLowerCase().includes(q);
       const matchCity = car.city.toLowerCase().includes(q);
       const matchSeller = car.sellerContact?.name?.toLowerCase().includes(q) || car.sellerContact?.phone?.includes(q);
-      return matchTitle || matchMake || matchModel || matchCity || matchSeller;
+      const matchTxn = car.paymentDetails?.transactionRef?.toLowerCase().includes(q);
+      return matchTitle || matchMake || matchModel || matchCity || matchSeller || matchTxn;
     }
     return true;
   });
 
+  const pendingCount = cars.filter((c) => c.status === 'pending').length;
   const ownerSubmissionsCount = cars.filter((c) => c.sellerType === 'owner').length;
   const activeCount = cars.filter((c) => c.status === 'active').length;
   const soldCount = cars.filter((c) => c.status === 'sold').length;
@@ -336,6 +350,21 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
 
                 <button
                   type="button"
+                  onClick={() => setActiveTab('pending')}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
+                    activeTab === 'pending'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                      : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300'
+                  }`}
+                >
+                  <span>⏳ Pending Review ({pendingCount})</span>
+                  {pendingCount > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-red-600 animate-ping" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setActiveTab('owner_submissions')}
                   className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
                     activeTab === 'owner_submissions'
@@ -476,6 +505,175 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
                           </button>
                         </div>
                       </div>
+
+                      {/* PAYMENT VERIFICATION CARD (For Pending Submissions & Fraud Prevention) */}
+                      {car.status === 'pending' && (
+                        <div className="bg-amber-500/10 border-2 border-amber-500/60 rounded-xl p-3 text-xs space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 text-amber-900 font-black">
+                              <AlertCircle className="w-4 h-4 text-amber-600" />
+                              <span>LISTING FEE VERIFICATION (600 ETB)</span>
+                            </div>
+                            <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                              Pending Verification
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white/90 p-2.5 rounded-lg border border-amber-200">
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">Payment Channel:</span>
+                              <strong className="text-slate-900 uppercase">
+                                {car.paymentDetails?.method || (car.sellerContact?.notes?.includes('TELEBIRR') ? 'Telebirr (0715737393)' : 'CBE (1000582914029)')}
+                              </strong>
+                            </div>
+
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">Transaction Reference ID:</span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <strong className="text-[#003399] font-mono text-xs">
+                                  {car.paymentDetails?.transactionRef || (car.sellerContact?.notes?.match(/Ref:\s*([^\s|]+)/)?.[1] || 'Not specified')}
+                                </strong>
+                                {(car.paymentDetails?.transactionRef || car.sellerContact?.notes) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const refToCopy = car.paymentDetails?.transactionRef || car.sellerContact?.notes?.match(/Ref:\s*([^\s|]+)/)?.[1] || '';
+                                      if (refToCopy) navigator.clipboard.writeText(refToCopy);
+                                    }}
+                                    className="text-[9px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-bold"
+                                    title="Copy Transaction Ref"
+                                  >
+                                    Copy
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">Submitted At:</span>
+                              <span className="text-slate-700 text-[11px]">
+                                {car.paymentDetails?.paidAt ? new Date(car.paymentDetails.paidAt).toLocaleString() : new Date(car.createdAt).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Attached Receipt PDF or Image/Screenshot */}
+                          {car.paymentDetails?.receiptScreenshot && (
+                            <div className="bg-white/95 p-3 rounded-xl border border-amber-300/80 shadow-sm">
+                              {car.paymentDetails.receiptFileType === 'pdf' || car.paymentDetails.receiptScreenshot.startsWith('data:application/pdf') || car.paymentDetails.receiptFileName?.toLowerCase().endsWith('.pdf') ? (
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-11 h-11 rounded-xl bg-red-600 text-white flex flex-col items-center justify-center font-black text-xs shadow-md shrink-0">
+                                      <FileText className="w-5 h-5" />
+                                      <span className="text-[9px]">PDF</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-slate-900 font-bold text-xs block">
+                                        {car.paymentDetails.receiptFileName || 'CBE_Telebirr_Receipt.pdf'}
+                                      </span>
+                                      <span className="text-[11px] text-slate-500 font-medium">
+                                        Official Electronic Bank / Telebirr PDF Receipt
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                                    <a
+                                      href={car.paymentDetails.receiptScreenshot}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      download={car.paymentDetails.receiptFileName || 'Payment-Receipt.pdf'}
+                                      className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition"
+                                    >
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                      <span>Open / View PDF</span>
+                                    </a>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-slate-800 text-xs font-bold flex items-center gap-1.5">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span>Payment Screenshot / Photo Attached:</span>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedReceiptPreview({
+                                        url: car.paymentDetails!.receiptScreenshot!,
+                                        title: `${car.year} ${car.make} ${car.model} - Payment Proof`,
+                                        isPdf: false,
+                                        fileName: car.paymentDetails?.receiptFileName
+                                      })}
+                                      className="text-xs text-[#003399] hover:underline font-bold flex items-center gap-1"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                      <span>Click to Inspect / Zoom</span>
+                                    </button>
+                                  </div>
+
+                                  <div 
+                                    onClick={() => setSelectedReceiptPreview({
+                                      url: car.paymentDetails!.receiptScreenshot!,
+                                      title: `${car.year} ${car.make} ${car.model} - Payment Proof`,
+                                      isPdf: false,
+                                      fileName: car.paymentDetails?.receiptFileName
+                                    })}
+                                    className="cursor-pointer group relative inline-block rounded-xl overflow-hidden border-2 border-amber-300 shadow-sm"
+                                  >
+                                    <img
+                                      src={car.paymentDetails.receiptScreenshot}
+                                      alt="Payment Proof"
+                                      className="h-32 w-auto max-w-full object-contain rounded-lg group-hover:scale-105 transition duration-200 bg-slate-900"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold gap-1.5">
+                                      <Eye className="w-4 h-4" />
+                                      <span>Click to Enlarge</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Direct 1-Click Verification Action Buttons */}
+                          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleStatusChange(car, 'active');
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Verify & Approve (Publish Live - Green)</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleStatusChange(car, 'urgent');
+                              }}
+                              className="bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition"
+                            >
+                              <span>Approve as Urgent Deal (Yellow)</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`Reject this listing? This will permanently remove the unverified listing and fake payment.`)) {
+                                  onDeleteCar(car.id);
+                                }
+                              }}
+                              className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs px-3 py-2 rounded-xl flex items-center gap-1 transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Reject / Delete Fake Payment</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       {/* CONFIDENTIAL SELLER DOSSIER (Admin-Only) */}
                       {hasPrivateSeller && (
@@ -696,6 +894,58 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Fullscreen Receipt Lightbox Modal for Inspection */}
+        {selectedReceiptPreview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-4 text-white space-y-3 max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <h4 className="font-bold text-sm truncate">{selectedReceiptPreview.title}</h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedReceiptPreview(null)}
+                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-auto flex items-center justify-center bg-slate-950 rounded-xl p-2 min-h-[300px]">
+                <img
+                  src={selectedReceiptPreview.url}
+                  alt="Payment Receipt Large"
+                  className="max-h-[70vh] w-auto object-contain rounded-lg"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-800 shrink-0 text-xs">
+                <span className="text-slate-400">
+                  {selectedReceiptPreview.fileName || 'Payment Confirmation'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={selectedReceiptPreview.url}
+                    download={selectedReceiptPreview.fileName || 'Payment-Proof.png'}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold flex items-center gap-1.5 transition"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedReceiptPreview(null)}
+                    className="px-4 py-1.5 bg-[#003399] hover:bg-[#002b80] text-white rounded-lg font-bold transition"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

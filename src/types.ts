@@ -99,6 +99,17 @@ export interface CarListing {
     preferredContact?: 'phone' | 'whatsapp' | 'telegram' | 'any';
     notes?: string;
   };
+  // Payment Verification Record (Prevents reuse & tracks manual Telebirr/CBE transfers)
+  paymentDetails?: {
+    method: 'telebirr' | 'cbe' | 'admin_waived';
+    transactionRef?: string;
+    amount: number;
+    paidAt: string;
+    receiptScreenshot?: string;
+    receiptFileType?: 'pdf' | 'image';
+    receiptFileName?: string;
+    verifiedByAdmin?: boolean;
+  };
 }
 
 export interface CarFilterState {

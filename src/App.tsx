@@ -207,8 +207,23 @@ export default function App() {
     );
   };
 
-  const handleAddCar = (newCar: CarListing) => {
+  const handleAddCar = (newCarData: Omit<CarListing, 'id' | 'createdAt' | 'views'>) => {
+    const newCar: CarListing = {
+      ...newCarData,
+      id: `cc-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      views: 1,
+    };
     setCars((prev) => [newCar, ...prev]);
+
+    if (newCar.status === 'pending') {
+      setToastMessage(lang === 'am' 
+        ? 'የመኪናዎ መረጃ ገብቷል! የ600 ብር ክፍያው በአስተዳዳሪው ሲረጋገጥ ወዲያው ይለጠፋል።' 
+        : 'Listing submitted! Awaiting 600 ETB admin payment verification before going live.');
+    } else {
+      setToastMessage(lang === 'am' ? 'መኪናዎ በቀጥታ ተለጥፏል!' : 'Vehicle successfully published to marketplace!');
+    }
+    setTimeout(() => setToastMessage(null), 5000);
   };
 
   const handleUpdateCarStatus = (id: string, status: ListingStatus) => {
@@ -240,6 +255,11 @@ export default function App() {
   // Filtered Cars Memo
   const filteredCars = useMemo(() => {
     return cars.filter((item) => {
+      // SECURITY GUARD: Pending verification cars are strictly hidden from public marketplace until Admin confirms payment!
+      if (item.status === 'pending') {
+        return false;
+      }
+
       // Type: all, sale, rent
       if (carFilters.type !== 'all' && item.type !== carFilters.type) {
         return false;
@@ -501,6 +521,7 @@ export default function App() {
         onAddCar={handleAddCar}
         lang={lang}
         isAdminLoggedIn={isAdminLoggedIn}
+        existingCars={cars}
       />
 
       {/* Vehicle Search & Filters Modal (Triggered via Navbar Search button) */}
