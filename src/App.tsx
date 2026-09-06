@@ -511,6 +511,8 @@ export default function App() {
           currency={currency}
           isFavorite={carFavorites.includes(selectedCar.id)}
           onToggleFavorite={toggleCarFavorite}
+          onUpdateStatus={handleUpdateCarStatus}
+          isAdminLoggedIn={isAdminLoggedIn}
         />
       )}
 

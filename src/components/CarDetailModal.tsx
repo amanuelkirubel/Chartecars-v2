@@ -18,9 +18,12 @@ import {
   Sparkles, 
   Heart,
   SlidersHorizontal,
-  User
+  User,
+  Check,
+  Lock,
+  Tag
 } from 'lucide-react';
-import { CarListing, Language, Currency } from '../types';
+import { CarListing, Language, Currency, ListingStatus } from '../types';
 
 interface CarDetailModalProps {
   car: CarListing;
@@ -29,6 +32,8 @@ interface CarDetailModalProps {
   onToggleFavorite: (id: string) => void;
   lang: Language;
   currency: Currency;
+  onUpdateStatus?: (id: string, status: ListingStatus) => void;
+  isAdminLoggedIn?: boolean;
 }
 
 export const CarDetailModal: React.FC<CarDetailModalProps> = ({
@@ -38,9 +43,28 @@ export const CarDetailModal: React.FC<CarDetailModalProps> = ({
   onToggleFavorite,
   lang,
   currency,
+  onUpdateStatus,
+  isAdminLoggedIn,
 }) => {
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [localStatus, setLocalStatus] = useState<ListingStatus>(car.status);
+  const [statusFeedback, setStatusFeedback] = useState<string | null>(null);
+
+  const handleSellerStatusChange = (newStatus: ListingStatus) => {
+    setLocalStatus(newStatus);
+    if (onUpdateStatus) {
+      onUpdateStatus(car.id, newStatus);
+    }
+    const label = newStatus === 'urgent' 
+      ? (lang === 'am' ? 'መኪናው ወደ አጣዳፊ ሽያጭ (Urgent Deal) ተቀይሯል!' : 'Car listing updated to URGENT DEAL!') 
+      : newStatus === 'sold'
+      ? (lang === 'am' ? 'መኪናው እንደተሸጠ (SOLD) ተመዝግቧል!' : 'Car listing marked as SOLD!')
+      : (lang === 'am' ? 'መኪናው ወደ ዝርዝር (Active) ተመልሷል!' : 'Car listing reset to Active Listed!');
+    
+    setStatusFeedback(label);
+    setTimeout(() => setStatusFeedback(null), 4000);
+  };
 
   const formatPrice = (amount: number) => {
     if (currency === 'USD') {
@@ -86,12 +110,12 @@ export const CarDetailModal: React.FC<CarDetailModalProps> = ({
         <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3.5 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
             {/* Status Mark: Sold Red, Urgent Yellow, List Green */}
-            {car.status === 'sold' ? (
+            {localStatus === 'sold' ? (
               <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-red-600 text-white border border-red-500 shadow-sm flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 <span>{lang === 'am' ? 'የተሸጠ (SOLD)' : 'SOLD'}</span>
               </span>
-            ) : car.status === 'urgent' ? (
+            ) : localStatus === 'urgent' ? (
               <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-yellow-400 text-slate-950 border border-yellow-300 shadow-sm flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />
                 <span>{lang === 'am' ? 'አጣዳፊ (URGENT)' : 'URGENT'}</span>
@@ -429,6 +453,111 @@ export const CarDetailModal: React.FC<CarDetailModalProps> = ({
                   ? 'የሻጭ ስም በምዝገባ የተረጋገጠ ሲሆን በአስተዳዳሪ ብቻ ነው የሚቀየረው። የቻርቴ እገዛ ዴስክ፡ 0715737393'
                   : 'Seller name is verified and cannot be edited by seller (Admin only). Charte Assistance: 0715737393'}
               </span>
+            </div>
+          </div>
+
+          {/* Seller Listing Status Controls (Policy: After listing only admin can edit car list, seller can edit only urgent and sold place on their own car list) */}
+          <div className="bg-slate-900 text-white p-5 rounded-2xl border border-slate-700 shadow-xl space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div className="flex items-start sm:items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-sm font-bold text-white">
+                      {lang === 'am' ? 'የመኪናው ሁኔታ ማስተካከያ (Owner Status Controls)' : 'Seller Listing Status Controls'}
+                    </h4>
+                    <span className="text-[10px] bg-slate-800 border border-slate-700 text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                      Seller Self-Service
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed mt-0.5">
+                    {lang === 'am'
+                      ? '🔒 መመሪያ፡ ከተዘረዘረ በኋላ የመኪናውን ሙሉ መረጃና ዋጋ ማስተካከል የሚችለው አስተዳዳሪ (Admin) ብቻ ነው። ሻጩ በራሱ ዝርዝር ላይ ሁኔታውን ወደ "አጣዳፊ (Urgent)" ወይም "ተሽጧል (Sold)" ብቻ መቀየር ይችላል።'
+                      : '🔒 Policy: After listing, only Admin can edit car specifications or price. Sellers can ONLY toggle listing status to "Urgent Deal" or "Sold" on their own car list.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Current Status Indicator */}
+              <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Current:</span>
+                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                  localStatus === 'sold'
+                    ? 'bg-red-600 text-white'
+                    : localStatus === 'urgent'
+                    ? 'bg-yellow-400 text-slate-950'
+                    : 'bg-emerald-600 text-white'
+                }`}>
+                  {localStatus === 'sold' ? 'Sold' : localStatus === 'urgent' ? 'Urgent' : 'Listed'}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Status Control Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {/* Mark as Urgent */}
+              <button
+                type="button"
+                onClick={() => handleSellerStatusChange('urgent')}
+                className={`py-3 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all ${
+                  localStatus === 'urgent'
+                    ? 'bg-yellow-400 text-slate-950 border-yellow-300 shadow-lg ring-2 ring-yellow-400/40'
+                    : 'bg-slate-800/90 hover:bg-slate-800 text-yellow-300 border-yellow-400/30'
+                }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 border border-slate-950" />
+                <span>{lang === 'am' ? 'አጣዳፊ ሽያጭ (Mark Urgent)' : 'Mark as Urgent Deal'}</span>
+              </button>
+
+              {/* Mark as Sold */}
+              <button
+                type="button"
+                onClick={() => handleSellerStatusChange('sold')}
+                className={`py-3 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all ${
+                  localStatus === 'sold'
+                    ? 'bg-red-600 text-white border-red-500 shadow-lg ring-2 ring-red-500/40'
+                    : 'bg-slate-800/90 hover:bg-slate-800 text-red-300 border-red-500/30'
+                }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-red-600 border border-white" />
+                <span>{lang === 'am' ? 'ተሽጧል (Mark as Sold)' : 'Mark as Sold'}</span>
+              </button>
+
+              {/* Set back to Listed/Active */}
+              <button
+                type="button"
+                onClick={() => handleSellerStatusChange('active')}
+                className={`py-3 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all ${
+                  localStatus === 'active'
+                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg ring-2 ring-emerald-500/40'
+                    : 'bg-slate-800/90 hover:bg-slate-800 text-emerald-300 border-emerald-500/30'
+                }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white" />
+                <span>{lang === 'am' ? 'በሽያጭ ላይ (Set Listed)' : 'Set as Listed (Active)'}</span>
+              </button>
+            </div>
+
+            {/* Status Change Notification Feedback */}
+            {statusFeedback && (
+              <div className="bg-emerald-950 border border-emerald-500/60 text-emerald-300 text-xs px-3.5 py-2.5 rounded-xl flex items-center gap-2 animate-fade-in shadow-inner">
+                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="font-semibold">{statusFeedback}</span>
+              </div>
+            )}
+
+            {/* Note regarding Admin edits */}
+            <div className="text-[10px] text-slate-400 border-t border-slate-800/80 pt-2 flex items-center justify-between flex-wrap gap-1">
+              <span>
+                {lang === 'am'
+                  ? 'ዋጋ ወይም የመኪናውን ቴክኒካል መረጃ ለመቀየር የአስተዳዳሪ ማረጋገጫ ያስፈልጋል'
+                  : 'To change price, photos or technical specs, only Charte Admin can make edits'}
+              </span>
+              <a href="tel:0715737393" className="text-amber-400 font-bold hover:underline font-mono">
+                Admin Hotline: 0715737393
+              </a>
             </div>
           </div>
 

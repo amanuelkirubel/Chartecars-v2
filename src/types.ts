@@ -99,9 +99,9 @@ export interface CarListing {
     preferredContact?: 'phone' | 'whatsapp' | 'telegram' | 'any';
     notes?: string;
   };
-  // Payment Verification Record (Prevents reuse & tracks manual Telebirr/CBE transfers)
+  // Payment Verification Record (Prevents reuse & tracks manual Telebirr/M-Pesa/Bank transfers)
   paymentDetails?: {
-    method: 'telebirr' | 'cbe' | 'admin_waived';
+    method: 'telebirr' | 'mpesa' | 'cbe' | 'abyssinia' | 'buna' | 'dashen' | 'awash' | 'lion' | 'admin_waived' | string;
     transactionRef?: string;
     amount: number;
     paidAt: string;

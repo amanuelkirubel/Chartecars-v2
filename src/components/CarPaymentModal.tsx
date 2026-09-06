@@ -49,26 +49,43 @@ type PaymentMethodType = 'telebirr' | 'cbe' | 'chapa' | 'awash_boa';
 
 const OFFICIAL_ACCOUNTS = {
   telebirr: {
-    name: 'Charte Cars / Amanuel K.',
+    name: 'Charte Cars / Charte Platform',
+    phone: '0970181259',
+  },
+  mpesa: {
+    name: 'Charte Cars / Charte Platform',
     phone: '0715737393',
-    merchantCode: '939804',
   },
   cbe: {
-    name: 'Charte Cars & Marketplace',
-    accountNumber: '1000582914029',
+    name: 'Charte Cars',
+    accountNumber: '1000099751715',
     bank: 'Commercial Bank of Ethiopia (CBE)',
-    branch: 'Addis Ababa Bole Branch',
-  },
-  awash: {
-    name: 'Charte Cars Services',
-    accountNumber: '01304928501900',
-    bank: 'Awash Bank',
   },
   boa: {
-    name: 'Charte Cars Services',
-    accountNumber: '148295018',
+    name: 'Charte Cars',
+    accountNumber: '152910851',
     bank: 'Bank of Abyssinia (BoA)',
-  }
+  },
+  buna: {
+    name: 'Charte Cars',
+    accountNumber: '1199501004634',
+    bank: 'Buna International Bank',
+  },
+  dashen: {
+    name: 'Charte Cars',
+    accountNumber: '5230712330011',
+    bank: 'Dashen Bank (Amole)',
+  },
+  awash: {
+    name: 'Charte Cars',
+    accountNumber: '01320258408900',
+    bank: 'Awash Bank',
+  },
+  lion: {
+    name: 'Charte Cars',
+    accountNumber: '00311034687-89',
+    bank: 'Lion International Bank',
+  },
 };
 
 export const CarPaymentModal: React.FC<CarPaymentModalProps> = ({
@@ -421,7 +438,7 @@ Please confirm my vehicle inspection appointment. Thank you!`;
                   </div>
 
                   <p className="text-[11px] text-slate-500 bg-white p-2.5 rounded-xl border border-slate-200 leading-relaxed">
-                    💡 <strong>How to pay:</strong> Open your Telebirr app &gt; tap <em>Send Money</em> to <span className="font-mono font-bold text-blue-600">0715737393</span> or <em>Pay Merchant</em> with code <span className="font-mono font-bold text-blue-600">939804</span> &gt; Enter {depositAmount.toLocaleString()} ETB &gt; Copy your Telebirr Transaction ID below.
+                    💡 <strong>How to pay:</strong> Open your Telebirr app &gt; tap <em>Send Money</em> to <span className="font-mono font-bold text-blue-600">0970181259</span> &gt; Enter {depositAmount.toLocaleString()} ETB &gt; Copy your Telebirr Transaction ID below.
                   </p>
                 </div>
               )}
@@ -474,6 +491,10 @@ Please confirm my vehicle inspection appointment. Thank you!`;
 
               {method === 'awash_boa' && (
                 <div className="space-y-2.5 text-xs text-slate-700">
+                  <p className="text-[11px] text-slate-500 font-semibold mb-1">
+                    Select any verified bank account below, click Copy to Paste in your mobile app, and enter your reference ID:
+                  </p>
+
                   <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between">
                     <div>
                       <span className="block font-bold text-amber-800">Awash Bank</span>
@@ -482,23 +503,85 @@ Please confirm my vehicle inspection appointment. Thank you!`;
                     <button
                       type="button"
                       onClick={() => handleCopy(OFFICIAL_ACCOUNTS.awash.accountNumber, 'awash-acc')}
-                      className="text-amber-700 bg-amber-50 p-1.5 rounded-lg hover:bg-amber-100"
+                      className="text-amber-700 bg-amber-50 px-2 py-1 rounded-lg hover:bg-amber-100 font-bold flex items-center gap-1"
                     >
                       {copiedField === 'awash-acc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedField === 'awash-acc' ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
 
                   <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between">
                     <div>
-                      <span className="block font-bold text-slate-900">Bank of Abyssinia</span>
+                      <span className="block font-bold text-slate-900">Bank of Abyssinia (BoA)</span>
                       <span className="font-mono text-slate-800 text-xs font-semibold">{OFFICIAL_ACCOUNTS.boa.accountNumber}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleCopy(OFFICIAL_ACCOUNTS.boa.accountNumber, 'boa-acc')}
-                      className="text-slate-700 bg-slate-100 p-1.5 rounded-lg hover:bg-slate-200"
+                      className="text-slate-700 bg-slate-100 px-2 py-1 rounded-lg hover:bg-slate-200 font-bold flex items-center gap-1"
                     >
                       {copiedField === 'boa-acc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedField === 'boa-acc' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between">
+                    <div>
+                      <span className="block font-bold text-amber-900">Buna International Bank</span>
+                      <span className="font-mono text-slate-800 text-xs font-semibold">{OFFICIAL_ACCOUNTS.buna.accountNumber}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(OFFICIAL_ACCOUNTS.buna.accountNumber, 'buna-acc')}
+                      className="text-amber-800 bg-amber-50 px-2 py-1 rounded-lg hover:bg-amber-100 font-bold flex items-center gap-1"
+                    >
+                      {copiedField === 'buna-acc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedField === 'buna-acc' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between">
+                    <div>
+                      <span className="block font-bold text-blue-900">Dashen Bank (Amole)</span>
+                      <span className="font-mono text-slate-800 text-xs font-semibold">{OFFICIAL_ACCOUNTS.dashen.accountNumber}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(OFFICIAL_ACCOUNTS.dashen.accountNumber, 'dashen-acc')}
+                      className="text-blue-800 bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100 font-bold flex items-center gap-1"
+                    >
+                      {copiedField === 'dashen-acc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedField === 'dashen-acc' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between">
+                    <div>
+                      <span className="block font-bold text-yellow-800">Lion International Bank</span>
+                      <span className="font-mono text-slate-800 text-xs font-semibold">{OFFICIAL_ACCOUNTS.lion.accountNumber}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(OFFICIAL_ACCOUNTS.lion.accountNumber, 'lion-acc')}
+                      className="text-yellow-800 bg-yellow-50 px-2 py-1 rounded-lg hover:bg-yellow-100 font-bold flex items-center gap-1"
+                    >
+                      {copiedField === 'lion-acc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedField === 'lion-acc' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between">
+                    <div>
+                      <span className="block font-bold text-emerald-800">Safaricom M-Pesa</span>
+                      <span className="font-mono text-slate-800 text-xs font-semibold">{OFFICIAL_ACCOUNTS.mpesa.phone}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(OFFICIAL_ACCOUNTS.mpesa.phone, 'mpesa-acc')}
+                      className="text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg hover:bg-emerald-100 font-bold flex items-center gap-1"
+                    >
+                      {copiedField === 'mpesa-acc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedField === 'mpesa-acc' ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
                 </div>

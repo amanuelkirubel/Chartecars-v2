@@ -19,6 +19,7 @@ import {
 import { CarListing, Language, ListingType } from '../types';
 import { POPULAR_CAR_MAKES, CAR_BODY_TYPES, ETHIOPIAN_PLATE_CODES } from '../data/mockCars';
 import { ETHIOPIAN_CITIES } from '../data/mockListings';
+import { CHARTE_PAYMENT_ACCOUNTS } from '../data/paymentAccounts';
 
 interface ListCarModalProps {
   isOpen: boolean;
@@ -75,7 +76,8 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
   const [sellerNotes, setSellerNotes] = useState('');
 
   // Mandatory Payment Verification State (Enforced: No one can list without pay; only admin can list without pay)
-  const [listingPaymentMethod, setListingPaymentMethod] = useState<'telebirr' | 'cbe'>('telebirr');
+  const [listingPaymentMethod, setListingPaymentMethod] = useState<string>('telebirr');
+  const [accountCategoryFilter, setAccountCategoryFilter] = useState<'all' | 'mobile_money' | 'bank'>('all');
   const [listingTxnRef, setListingTxnRef] = useState('');
   const [receiptScreenshot, setReceiptScreenshot] = useState<string | null>(null);
   const [receiptFileType, setReceiptFileType] = useState<'pdf' | 'image'>('image');
@@ -194,8 +196,8 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
       const cleanRef = listingTxnRef.trim();
       if (!cleanRef || cleanRef.length < 5) {
         setErrorMsg(lang === 'am'
-          ? 'ክፍያ ሳይፈጽሙ መኪናዎን መዘርዘር አይችሉም! እባክዎ የ600 ብር መዘርዘሪያ ክፍያ በቴሌብር (0715737393) ወይም በንግድ ባንክ (1000582914029) ከፍለው የደረሰኝ ቁጥር (Transaction Reference) ያስገቡ። አስተዳዳሪ (Admin) ብቻ ነው ያለ ክፍያ መዘርዘር የሚችለው።'
-          : 'Payment is strictly required! No one can list their car to sell without paying the 600 ETB listing fee. Please pay via Telebirr or CBE and enter your valid transaction reference code. Only verified administrators can list without pay.');
+          ? 'ክፍያ ሳይፈጽሙ መኪናዎን መዘርዘር አይችሉም! እባክዎ የ600 ብር መዘርዘሪያ ክፍያ ከተዘረዘሩት አካውንቶች (ቴሌብር 0970181259፣ ኤም-ፔሳ 0715737393፣ ንግድ ባንክ 1000099751715፣ አቢሲኒያ 152910851፣ ቡና 1199501004634፣ ዳሸን 5230712330011፣ አዋሽ 01320258408900፣ አንበሳ 00311034687-89) በአንዱ ከፍለው የደረሰኝ ቁጥር ያስገቡ።'
+          : 'Payment is strictly required! No one can list their car without paying the 600 ETB listing fee. Please pay via Telebirr (0970181259), M-Pesa (0715737393), CBE (1000099751715), BoA (152910851), Buna (1199501004634), Dashen (5230712330011), Awash (01320258408900), or Lion Bank (00311034687-89) and enter your transaction reference.');
         return;
       }
 
@@ -740,66 +742,115 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
                 </div>
               </div>
 
-              {/* Payment Accounts Selection */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                {/* Telebirr Card */}
-                <div 
-                  onClick={() => setListingPaymentMethod('telebirr')}
-                  className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                    listingPaymentMethod === 'telebirr'
-                      ? 'bg-[#0072CE]/20 border-[#0072CE] ring-2 ring-[#0072CE]/40'
-                      : 'bg-slate-900 border-slate-700 opacity-80'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-xs text-sky-400">1. Telebirr Official</span>
-                    <span className="text-[10px] bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded-full font-bold">600 ETB</span>
-                  </div>
-                  <div className="font-mono text-sm font-bold text-white flex items-center justify-between">
-                    <span>0715737393</span>
+              {/* Payment Accounts Selection with Tabs & Direct Paste */}
+              <div className="space-y-2.5 pt-1">
+                {/* Account Category Filter Tabs */}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-700">
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopy('0715737393', 'telebirr');
-                      }}
-                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-white px-2 py-1 rounded flex items-center gap-1 transition"
+                      onClick={() => setAccountCategoryFilter('all')}
+                      className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition ${
+                        accountCategoryFilter === 'all' 
+                          ? 'bg-[#003399] text-white' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
                     >
-                      {copiedAccount === 'telebirr' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                      <span>{copiedAccount === 'telebirr' ? 'Copied' : 'Copy'}</span>
+                      {lang === 'am' ? 'ሁሉም (8 አካውንቶች)' : 'All 8 Accounts'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAccountCategoryFilter('mobile_money')}
+                      className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition ${
+                        accountCategoryFilter === 'mobile_money' 
+                          ? 'bg-[#003399] text-white' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {lang === 'am' ? 'ሞባይል ገንዘብ (ቴሌብር & ኤም-ፔሳ)' : 'Telebirr & M-Pesa'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAccountCategoryFilter('bank')}
+                      className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition ${
+                        accountCategoryFilter === 'bank' 
+                          ? 'bg-[#003399] text-white' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {lang === 'am' ? 'ባንኮች (ንግድ ባንክ፣ አቢሲኒያ...)' : 'Commercial Banks'}
                     </button>
                   </div>
-                  <span className="text-[10px] text-slate-400 block mt-1">Account: Charte Cars / Amanuel K.</span>
+
+                  <span className="text-[10px] text-amber-300 font-medium">
+                    {lang === 'am' ? '📋 "Copy" ንክተው ወደ ባንክ አፖ ይለጥፉ (Paste)' : '📋 Click "Copy to Paste" & paste into your app'}
+                  </span>
                 </div>
 
-                {/* CBE Card */}
-                <div 
-                  onClick={() => setListingPaymentMethod('cbe')}
-                  className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                    listingPaymentMethod === 'cbe'
-                      ? 'bg-purple-950/40 border-purple-500 ring-2 ring-purple-500/40'
-                      : 'bg-slate-900 border-slate-700 opacity-80'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-xs text-purple-300">2. CBE (ንግድ ባንክ)</span>
-                    <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold">600 ETB</span>
-                  </div>
-                  <div className="font-mono text-sm font-bold text-white flex items-center justify-between">
-                    <span>1000582914029</span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopy('1000582914029', 'cbe');
-                      }}
-                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-white px-2 py-1 rounded flex items-center gap-1 transition"
-                    >
-                      {copiedAccount === 'cbe' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                      <span>{copiedAccount === 'cbe' ? 'Copied' : 'Copy'}</span>
-                    </button>
-                  </div>
-                  <span className="text-[10px] text-slate-400 block mt-1">Account: Charte Cars & Marketplace</span>
+                {/* Grid of All 8 Payment Accounts */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[280px] overflow-y-auto pr-1">
+                  {CHARTE_PAYMENT_ACCOUNTS
+                    .filter((acc) => accountCategoryFilter === 'all' || acc.category === accountCategoryFilter)
+                    .map((acc) => {
+                      const isSelected = listingPaymentMethod === acc.id;
+                      const isCopied = copiedAccount === acc.id;
+
+                      return (
+                        <div
+                          key={acc.id}
+                          onClick={() => setListingPaymentMethod(acc.id)}
+                          className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-slate-900 border-amber-400 ring-2 ring-amber-400/30'
+                              : 'bg-slate-900/80 border-slate-700/80 hover:border-slate-600'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded text-white ${acc.badgeColor}`}>
+                                {acc.id.toUpperCase()}
+                              </span>
+                              <span className="font-bold text-xs text-white truncate max-w-[140px]">
+                                {lang === 'am' ? acc.nameAm : acc.name}
+                              </span>
+                            </div>
+                            <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                              600 ETB
+                            </span>
+                          </div>
+
+                          <div className="font-mono text-sm font-bold text-white flex items-center justify-between bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-800">
+                            <span className="tracking-wider text-amber-200">{acc.accountNumber}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setListingPaymentMethod(acc.id);
+                                handleCopy(acc.accountNumber, acc.id);
+                              }}
+                              className={`text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 transition ${
+                                isCopied 
+                                  ? 'bg-emerald-600 text-white' 
+                                  : 'bg-slate-800 hover:bg-slate-700 text-amber-300'
+                              }`}
+                              title="Click to copy account number to paste"
+                            >
+                              {isCopied ? <Check className="w-3 h-3 text-white" /> : <Copy className="w-3 h-3" />}
+                              <span>{isCopied ? 'Copied!' : 'Copy to Paste'}</span>
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1.5">
+                            <span className="truncate">{acc.accountName}</span>
+                            {isSelected && (
+                              <span className="text-emerald-400 font-bold flex items-center gap-0.5">
+                                <Check className="w-3 h-3" /> Selected
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
 
