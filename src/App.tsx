@@ -109,6 +109,27 @@ export default function App() {
   const [isCarFavoritesModalOpen, setIsCarFavoritesModalOpen] = useState(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
+
+  // Admin Authentication State
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
+    return localStorage.getItem('charte_admin_auth') === 'true';
+  });
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const handleAdminLoginSuccess = () => {
+    setIsAdminLoggedIn(true);
+    localStorage.setItem('charte_admin_auth', 'true');
+    setToastMessage(lang === 'am' ? 'በአስተዳዳሪነት በተሳካ ሁኔታ ገብተዋል' : 'Successfully logged in as Admin.');
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleLogout = () => {
+    setIsAdminLoggedIn(false);
+    localStorage.removeItem('charte_admin_auth');
+    setIsCarAdminModalOpen(false);
+    setToastMessage(lang === 'am' ? 'በተሳካ ሁኔታ ወጥተዋል (Logged out)' : 'Logged out directly.');
+    setTimeout(() => setToastMessage(null), 3500);
+  };
   
   // Payment & Reservation Desk State
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -300,6 +321,8 @@ export default function App() {
         onOpenDownloadApp={() => setIsDownloadModalOpen(true)}
         onOpenPaymentDesk={() => handleOpenPayment(null, 'listing_fee')}
         onOpenAbout={() => setIsAboutModalOpen(true)}
+        isAdminLoggedIn={isAdminLoggedIn}
+        onLogout={handleLogout}
       />
 
       {/* 3. Hero Section for Charte Cars (FIND A CAR YOU CAN ACTUALLY SEE YOURSELF IN.) */}
@@ -475,7 +498,7 @@ export default function App() {
         lang={lang}
       />
 
-      {/* Admin Portal Modal (Passcode Protected with Private Seller Contact Dossiers) */}
+      {/* Admin Portal Modal (Protected with Admin Email & Password) */}
       <CarAdminPortalModal
         isOpen={isCarAdminModalOpen}
         onClose={() => setIsCarAdminModalOpen(false)}
@@ -485,6 +508,9 @@ export default function App() {
         onDeleteCar={handleDeleteCar}
         lang={lang}
         currency={currency}
+        isAdminLoggedIn={isAdminLoggedIn}
+        onLoginSuccess={handleAdminLoginSuccess}
+        onLogout={handleLogout}
       />
 
       {/* Car Favorites Modal */}
@@ -524,6 +550,14 @@ export default function App() {
         purpose={paymentPurpose}
         lang={lang}
       />
+
+      {/* Direct Toast Notification for Logout & Login */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-950/95 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-2.5 backdrop-blur">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
     </div>
   );

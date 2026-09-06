@@ -10,7 +10,8 @@ import {
   Sparkles, 
   Plus, 
   Trash2,
-  CreditCard 
+  CreditCard,
+  User 
 } from 'lucide-react';
 import { CarListing, Language, ListingType } from '../types';
 import { POPULAR_CAR_MAKES, CAR_BODY_TYPES, ETHIOPIAN_PLATE_CODES } from '../data/mockCars';
@@ -136,10 +137,17 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
       return;
     }
 
-    if (!sellerName.trim() || !sellerPhone.trim()) {
+    if (!sellerName.trim()) {
       setErrorMsg(lang === 'am' 
-        ? 'እባክዎ የባለቤቱን ስምና ስልክ ቁጥር ያስገቡ (ይህ መረጃ ለአስተዳዳሪ ብቻ ሚስጥራዊ ሆኖ ይቀመጣል)።' 
-        : 'Owner name and phone are required for admin verification (will NEVER be published publicly).');
+        ? 'የሻጭ ስም ማስገባት ግዴታ ነው። ባዶ ከሆነ መኪናዎን መዘርዘር አይችሉም።' 
+        : 'Seller Name is required. If left blank, you cannot post your car to the marketplace.');
+      return;
+    }
+
+    if (!sellerPhone.trim()) {
+      setErrorMsg(lang === 'am' 
+        ? 'የሻጭ ስልክ ቁጥር ማስገባት ግዴታ ነው (ገዢዎች በቀጥታ እንዲያገኙዎት)።' 
+        : 'Primary Phone Number is required so buyers can contact you directly.');
       return;
     }
 
@@ -589,23 +597,23 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
             />
           </div>
 
-          {/* SECTION 7: STRICTLY CONFIDENTIAL OWNER / SELLER CONTACT (Admin-Only Privacy) */}
-          <div className="bg-[#051329] border-2 border-emerald-500/50 rounded-2xl p-4 sm:p-5 text-white space-y-3.5 shadow-lg">
+          {/* SECTION 7: SELLER NAME & DIRECT BUYER CONTACT (Direct Owner Listing) */}
+          <div className="bg-[#051329] border-2 border-emerald-500/60 rounded-2xl p-4 sm:p-5 text-white space-y-3.5 shadow-lg">
             
             <div className="flex items-start justify-between gap-3 border-b border-blue-900/60 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/40">
-                  <Lock className="w-4 h-4" />
+                  <User className="w-4 h-4" />
                 </div>
                 <div>
                   <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-                    <span>{lang === 'am' ? 'የባለቤቱ ሚስጥራዊ መረጃ (ለአስተዳዳሪ ብቻ)' : 'Owner / Seller Confidential Verification (Admin Only)'}</span>
-                    <span className="bg-emerald-950 text-emerald-300 border border-emerald-600/50 text-[9px] px-2 py-0.5 rounded-full uppercase font-mono">Private</span>
+                    <span>{lang === 'am' ? 'የሻጭ ስም እና ቀጥተኛ መገናኛ (ለገዢዎች የሚታይ)' : 'Seller Information & Direct Contact (Visible to Buyers)'}</span>
+                    <span className="bg-emerald-950 text-emerald-300 border border-emerald-600/50 text-[9px] px-2 py-0.5 rounded-full uppercase font-mono font-bold">Direct Listing</span>
                   </h4>
                   <p className="text-[11px] text-slate-300">
                     {lang === 'am'
-                      ? 'ይህ መረጃ ድህረ ገጹ ላይ በጭራሽ አይለጠፍም። ገዢዎች በቀጥታ ቻርቴን ያገኛሉ፣ እኛም ከእርስዎ ጋር እናስተባብራለን።'
-                      : 'Your personal phone & name will NEVER be shown publicly. Inquiries route to Charte Cars official team.'}
+                      ? 'በ600 ብር ሲዘረዝሩ ገዢዎች በቀጥታ በስልክ፣ ዋትስአፕ እና ቴሌግራም ያገኙዎታል። የሻጭ ስም ማስገባት ግዴታ ነው፤ ከተለጠፈ በኋላ በአስተዳዳሪ ብቻ ነው የሚቀየረው።'
+                      : 'Once listed for 600 ETB, interested buyers will contact you directly. Seller name is mandatory and cannot be edited by seller once posted (only Admin can edit).'}
                   </p>
                 </div>
               </div>
@@ -614,17 +622,22 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Seller Full Name */}
               <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                  Owner / Representative Full Name *
+                <label className="text-[11px] font-semibold text-slate-200 block mb-1">
+                  {lang === 'am' ? 'የሻጭ ሙሉ ስም * (ግዴታ - ከተለጠፈ በኋላ አይቀየርም)' : 'Seller Full Name * (Mandatory - Not Editable After Posting)'}
                 </label>
                 <input
                   type="text"
                   value={sellerName}
                   onChange={(e) => setSellerName(e.target.value)}
-                  placeholder="e.g. Dawit Tadesse"
+                  placeholder={lang === 'am' ? 'ለምሳሌ፡ ዳዊት ታደሰ' : 'e.g. Dawit Tadesse'}
                   required
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
+                  className="w-full bg-slate-950 border border-emerald-500/70 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 font-semibold"
                 />
+                <span className="text-[10px] text-amber-300/90 block mt-1">
+                  {lang === 'am' 
+                    ? '⚠️ ባዶ መተው አይቻልም። ከተለጠፈ በኋላ በሻጭ አይቀየርም (በአስተዳዳሪ ብቻ)' 
+                    : '⚠️ Cannot be blank. Seller name cannot be edited by seller (only Admin can edit).'}
+                </span>
               </div>
 
               {/* Primary Phone / WhatsApp */}

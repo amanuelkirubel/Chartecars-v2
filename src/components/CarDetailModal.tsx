@@ -17,7 +17,8 @@ import {
   CheckCircle2, 
   Sparkles, 
   Heart,
-  SlidersHorizontal
+  SlidersHorizontal,
+  User
 } from 'lucide-react';
 import { CarListing, Language, Currency } from '../types';
 
@@ -183,6 +184,18 @@ export const CarDetailModal: React.FC<CarDetailModalProps> = ({
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 leading-snug">
                 {lang === 'am' && car.titleAm ? car.titleAm : car.title}
               </h2>
+
+              {/* Seller Name Display in Detail View */}
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-800">
+                  <User className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="text-slate-500 font-medium">{lang === 'am' ? 'የመኪናው ሻጭ:' : 'Seller:'}</span>
+                  <strong className="text-slate-900 font-bold">{car.sellerContact?.name || (lang === 'am' ? 'የመኪናው ባለቤት' : 'Car Owner')}</strong>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">
+                  {lang === 'am' ? 'ቀጥተኛ ሻጭ (0% ኮሚሽን)' : 'Direct Owner Listing (0% Commission)'}
+                </span>
+              </div>
             </div>
 
             <div className="shrink-0 bg-blue-50/80 border border-blue-100 p-3.5 rounded-2xl md:text-right">
@@ -306,62 +319,104 @@ export const CarDetailModal: React.FC<CarDetailModalProps> = ({
             </p>
           </div>
 
-          {/* Verified Official Charte Cars Contact & Direct Inquiry Panel */}
-          <div className="bg-gradient-to-br from-[#051329] to-[#0A224A] text-white p-5 sm:p-6 rounded-2xl border border-blue-800/60 shadow-xl space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-900/60 pb-3">
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0" />
-                <div>
-                  <h4 className="text-sm font-bold text-white">
-                    {lang === 'am' ? 'የቻርቴ መኪኖች ይፋዊ የደንበኞች አገልግሎት' : 'Charte Cars Official Inquiry & Verification Desk'}
-                  </h4>
-                  <p className="text-xs text-slate-300">
-                    {lang === 'am' ? 'ሁሉም ጥያቄዎች በቻርቴ ይፋዊ ወኪሎች በኩል ይስተናገዳሉ' : 'All viewings & inspections are routed directly through our verified brokers'}
-                  </p>
+          {/* Direct Seller Contact & Buyer Connection Panel */}
+          {(() => {
+            const sellerPhone = car.sellerContact?.phone || '0715737393';
+            const sellerName = car.sellerContact?.name || (lang === 'am' ? 'የመኪናው ባለቤት' : 'Vehicle Owner');
+            const sellerTelegram = car.sellerContact?.telegram;
+            const sellerAltPhone = car.sellerContact?.altPhone;
+            const sellerPhoneClean = sellerPhone.replace(/[^0-9]/g, '');
+            const waPhone = sellerPhoneClean.startsWith('0') 
+              ? '251' + sellerPhoneClean.substring(1) 
+              : (sellerPhoneClean.startsWith('251') ? sellerPhoneClean : '251' + sellerPhoneClean);
+            const sellerWaMsg = encodeURIComponent(
+              `Hello ${sellerName}, I am interested in viewing / purchasing your car: ${car.year} ${car.make} ${car.model} (${car.price.toLocaleString()} ETB, Ref: #${car.id}) on Charte Cars.`
+            );
+
+            return (
+              <div className="bg-gradient-to-br from-[#051329] to-[#0A224A] text-white p-5 sm:p-6 rounded-2xl border border-blue-800/60 shadow-xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-900/60 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <span>{lang === 'am' ? 'የሻጩ ቀጥተኛ መገናኛ' : 'Direct Seller Contact'}</span>
+                        <span className="text-emerald-400 font-mono font-normal">({sellerName})</span>
+                      </h4>
+                      <p className="text-xs text-slate-300">
+                        {lang === 'am' 
+                          ? 'ከባለቤቱ ጋር በቀጥታ ይደራደሩ፤ ምንም አይነት የደላላ ኮሚሽን የለም።' 
+                          : 'Deal directly with the verified seller — 0% middleman and zero broker markups.'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="bg-emerald-950 text-emerald-300 border border-emerald-700/60 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider self-start sm:self-auto">
+                    {lang === 'am' ? '0% ኮሚሽን (ቀጥተኛ)' : '0% Commission Direct'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Phone Call Seller */}
+                  <a
+                    href={`tel:${sellerPhone}`}
+                    className="bg-[#003399] hover:bg-blue-600 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all font-mono"
+                  >
+                    <PhoneCall className="w-4 h-4" />
+                    <span>{lang === 'am' ? 'ለሻጩ ይደውሉ' : 'Call Seller'}: {sellerPhone}</span>
+                  </a>
+
+                  {/* WhatsApp Direct */}
+                  <a
+                    href={`https://wa.me/${waPhone}?text=${sellerWaMsg}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Chat on WhatsApp</span>
+                  </a>
+
+                  {/* Telegram */}
+                  {sellerTelegram ? (
+                    <a
+                      href={`https://t.me/${sellerTelegram.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>Telegram: {sellerTelegram}</span>
+                    </a>
+                  ) : (
+                    <a
+                      href="https://t.me/charte7"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>Telegram: @charte7</span>
+                    </a>
+                  )}
+                </div>
+
+                <div className="text-[11px] text-slate-400 text-center pt-1 border-t border-blue-950/80">
+                  {sellerAltPhone && (
+                    <span className="block sm:inline mr-2">
+                      {lang === 'am' ? 'ተጨማሪ ስልክ:' : 'Alt Phone:'} <strong className="text-slate-300 font-mono">{sellerAltPhone}</strong> &bull;{' '}
+                    </span>
+                  )}
+                  <span>
+                    {lang === 'am'
+                      ? 'የሻጭ ስም በምዝገባ የተረጋገጠ ሲሆን በአስተዳዳሪ ብቻ ነው የሚቀየረው። የቻርቴ እገዛ ዴስክ፡ 0715737393'
+                      : 'Seller name is verified and cannot be edited by seller (Admin only). Charte Assistance: 0715737393'}
+                  </span>
                 </div>
               </div>
-              <span className="bg-emerald-950 text-emerald-300 border border-emerald-700/60 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider self-start sm:self-auto">
-                Verified Broker Service
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* WhatsApp Direct */}
-              <a
-                href={`https://wa.me/251715737393?text=${encodeURIComponent(inquiryMessage)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Chat on WhatsApp</span>
-              </a>
-
-              {/* Phone Call */}
-              <a
-                href="tel:0715737393"
-                className="bg-[#003399] hover:bg-blue-600 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all font-mono"
-              >
-                <PhoneCall className="w-4 h-4" />
-                <span>Call 0715737393</span>
-              </a>
-
-              {/* Telegram */}
-              <a
-                href="https://t.me/charte7"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all"
-              >
-                <Send className="w-4 h-4" />
-                <span>Telegram: @charte7</span>
-              </a>
-            </div>
-
-            <div className="text-[11px] text-slate-400 text-center pt-1">
-              Backup direct call desk: <strong className="text-slate-300 font-mono">0939804748</strong> &bull; Telegram: <strong className="text-slate-300">@charte77</strong>
-            </div>
-          </div>
+            );
+          })()}
 
         </div>
 

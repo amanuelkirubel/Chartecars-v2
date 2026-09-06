@@ -9,7 +9,8 @@ import {
   Heart, 
   Eye, 
   ChevronRight, 
-  Calendar 
+  Calendar,
+  User 
 } from 'lucide-react';
 import { CarListing, Language, Currency } from '../types';
 
@@ -191,6 +192,20 @@ export const CarListingCard: React.FC<CarListingCardProps> = ({
             </div>
           </div>
 
+          {/* Seller Name Option in the List */}
+          <div className="flex items-center justify-between text-xs bg-slate-50 border border-slate-200/80 px-2.5 py-1.5 rounded-xl">
+            <div className="flex items-center gap-1.5 truncate">
+              <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span className="truncate">
+                <span className="text-slate-500 font-medium">{lang === 'am' ? 'ሻጭ: ' : 'Seller: '}</span>
+                <span className="font-bold text-slate-900">{car.sellerContact?.name || (lang === 'am' ? 'የመኪናው ባለቤት' : 'Car Owner')}</span>
+              </span>
+            </div>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md shrink-0">
+              {lang === 'am' ? 'ቀጥተኛ ሻጭ' : 'Direct Seller'}
+            </span>
+          </div>
+
         </div>
       </div>
 
@@ -205,15 +220,26 @@ export const CarListingCard: React.FC<CarListingCardProps> = ({
           <span>{lang === 'am' ? 'ዝርዝር መረጃ' : 'View Specs'}</span>
         </button>
 
-        <a
-          href={`https://wa.me/251715737393?text=${encodeURIComponent(`Hello Charte Cars, I am interested in: ${car.year} ${car.make} ${car.model} (${car.price.toLocaleString()} ETB, Ref: #${car.id})`)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 shadow-sm"
-          title="Inquire on WhatsApp"
-        >
-          <span>WhatsApp</span>
-        </a>
+        {(() => {
+          const sellerPhoneRaw = car.sellerContact?.phone?.replace(/[^0-9]/g, '') || '';
+          const waPhone = sellerPhoneRaw
+            ? (sellerPhoneRaw.startsWith('0') ? `251${sellerPhoneRaw.substring(1)}` : (sellerPhoneRaw.startsWith('251') ? sellerPhoneRaw : `251${sellerPhoneRaw}`))
+            : '251715737393';
+          const sellerText = encodeURIComponent(
+            `Hello ${car.sellerContact?.name || 'Seller'}, I found your car on Charte Cars: ${car.year} ${car.make} ${car.model} (${car.price.toLocaleString()} ETB, Ref: #${car.id}). I am interested in viewing / purchasing it.`
+          );
+          return (
+            <a
+              href={`https://wa.me/${waPhone}?text=${sellerText}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 px-3 rounded-xl transition-colors flex items-center justify-center gap-1 shadow-sm"
+              title={car.sellerContact?.name ? `WhatsApp ${car.sellerContact.name}` : 'Contact Seller on WhatsApp'}
+            >
+              <span>WhatsApp</span>
+            </a>
+          );
+        })()}
       </div>
 
     </div>

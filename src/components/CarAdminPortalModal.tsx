@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Car, 
@@ -17,9 +17,10 @@ import {
   ExternalLink, 
   Video, 
   RotateCcw,
-  Sparkles 
+  Sparkles,
+  LogOut 
 } from 'lucide-react';
-import { CarListing, Language, ListingStatus } from '../types';
+import { CarListing, Language, ListingStatus, Currency } from '../types';
 
 interface CarAdminPortalModalProps {
   isOpen: boolean;
@@ -28,6 +29,11 @@ interface CarAdminPortalModalProps {
   onUpdateCar: (updatedCar: CarListing) => void;
   onDeleteCar: (id: string) => void;
   lang: Language;
+  currency?: Currency;
+  onUpdateStatus?: (id: string, status: ListingStatus) => void;
+  isAdminLoggedIn?: boolean;
+  onLoginSuccess?: () => void;
+  onLogout?: () => void;
 }
 
 export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
@@ -37,13 +43,26 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
   onUpdateCar,
   onDeleteCar,
   lang,
+  currency,
+  isAdminLoggedIn,
+  onLoginSuccess,
+  onLogout,
 }) => {
   if (!isOpen) return null;
 
   // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return isAdminLoggedIn ?? (localStorage.getItem('charte_admin_auth') === 'true');
+  });
+  const [adminEmail, setAdminEmail] = useState('');
   const [passcode, setPasscode] = useState('');
   const [authError, setAuthError] = useState(false);
+
+  useEffect(() => {
+    if (isAdminLoggedIn !== undefined) {
+      setIsAuthenticated(isAdminLoggedIn);
+    }
+  }, [isAdminLoggedIn]);
 
   // Active filter
   const [activeTab, setActiveTab] = useState<'all' | 'owner_submissions' | 'active' | 'urgent' | 'sold'>('all');
@@ -60,12 +79,32 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passcode.trim() === 'charte2026' || passcode.trim() === '0715' || passcode.trim() === 'admin') {
+    const cleanPass = passcode.trim();
+    if (
+      adminEmail.trim().length > 0 &&
+      (cleanPass === 'charte2026' || cleanPass === '0715' || cleanPass === 'admin')
+    ) {
       setIsAuthenticated(true);
       setAuthError(false);
+      localStorage.setItem('charte_admin_auth', 'true');
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
     } else {
       setAuthError(true);
     }
+  };
+
+  const handleDirectLogout = () => {
+    setIsAuthenticated(false);
+    setPasscode('');
+    setAdminEmail('');
+    setAuthError(false);
+    localStorage.removeItem('charte_admin_auth');
+    if (onLogout) {
+      onLogout();
+    }
+    onClose();
   };
 
   const handleStatusChange = (car: CarListing, newStatus: ListingStatus) => {
@@ -140,13 +179,27 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={handleDirectLogout}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow transition active:scale-95 cursor-pointer"
+                title="Logout directly"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>{lang === 'am' ? 'ውጣ (Logout)' : 'Logout'}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Auth Barrier */}
@@ -159,30 +212,50 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
             <div>
               <h3 className="text-lg font-bold text-slate-900">Admin Authentication Required</h3>
               <p className="text-xs text-slate-500 mt-1">
-                Enter the Charte administrative passcode to access confidential vehicle and seller records.
+                Enter your administrative email and password to manage car listings, update vehicle statuses, and edit seller records.
               </p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-3">
-              <input
-                type="password"
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                placeholder="Enter passcode (e.g. charte2026 or 0715)"
-                autoFocus
-                className="w-full text-center tracking-widest text-sm bg-slate-50 border border-slate-300 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-600 focus:bg-white transition-colors"
-              />
+            <form onSubmit={handleLogin} className="space-y-3.5 text-left">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Admin Email
+                </label>
+                <input
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  placeholder="admin@charte.com"
+                  required
+                  autoFocus
+                  className="w-full text-sm bg-slate-50 border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-none focus:border-blue-600 focus:bg-white transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Admin Password
+                </label>
+                <input
+                  type="password"
+                  value={passcode}
+                  onChange={(e) => setPasscode(e.target.value)}
+                  placeholder="Enter admin password"
+                  required
+                  className="w-full text-sm bg-slate-50 border border-slate-300 rounded-xl py-2.5 px-3 focus:outline-none focus:border-blue-600 focus:bg-white transition-colors"
+                />
+              </div>
 
               {authError && (
-                <div className="text-xs text-red-600 flex items-center justify-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  <span>Invalid passcode. Please try again.</span>
+                <div className="text-xs text-red-600 flex items-center justify-center gap-1 py-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Invalid admin email or password. Please try again.</span>
                 </div>
               )}
 
               <button
                 type="submit"
-                className="w-full bg-[#003399] hover:bg-blue-800 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-md transition-all"
+                className="w-full bg-[#003399] hover:bg-blue-800 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-md transition-all cursor-pointer"
               >
                 Access Admin Portal
               </button>
@@ -541,6 +614,58 @@ export const CarAdminPortalModal: React.FC<CarAdminPortalModalProps> = ({
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2"
                     />
                   </div>
+                </div>
+
+                {/* Seller Name (Strictly Admin-Only Editable) */}
+                <div className="bg-amber-50/80 border border-amber-200/80 p-3 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-amber-900 uppercase tracking-wider">
+                      Seller Information (Admin Exclusive Edit)
+                    </span>
+                    <span className="text-[10px] text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded font-semibold">
+                      Admin Only
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Seller Full Name *</label>
+                      <input
+                        type="text"
+                        value={editingCar.sellerContact?.name || ''}
+                        onChange={(e) => setEditingCar({
+                          ...editingCar,
+                          sellerContact: {
+                            ...editingCar.sellerContact,
+                            name: e.target.value,
+                            phone: editingCar.sellerContact?.phone || ''
+                          }
+                        })}
+                        required
+                        className="w-full bg-white border border-slate-300 rounded-lg p-2 font-medium focus:outline-none focus:border-blue-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Seller Phone *</label>
+                      <input
+                        type="text"
+                        value={editingCar.sellerContact?.phone || ''}
+                        onChange={(e) => setEditingCar({
+                          ...editingCar,
+                          sellerContact: {
+                            ...editingCar.sellerContact,
+                            name: editingCar.sellerContact?.name || '',
+                            phone: e.target.value
+                          }
+                        })}
+                        required
+                        className="w-full bg-white border border-slate-300 rounded-lg p-2 font-mono focus:outline-none focus:border-blue-600"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    Sellers cannot edit their registered name after posting. Only Charte Admin can update or correct seller names.
+                  </p>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">

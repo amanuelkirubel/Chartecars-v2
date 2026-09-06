@@ -31,6 +31,8 @@ interface NavbarProps {
   onOpenDownloadApp: () => void;
   onOpenPaymentDesk?: () => void;
   onOpenAbout?: () => void;
+  isAdminLoggedIn?: boolean;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -47,6 +49,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenDownloadApp,
   onOpenPaymentDesk,
   onOpenAbout,
+  isAdminLoggedIn = false,
+  onLogout,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -128,13 +132,26 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>{lang === 'am' ? 'አውርድ (App)' : 'Download App'}</span>
             </button>
 
-            {/* Logout / Admin */}
-            <button
-              onClick={onOpenAdmin}
-              className="text-slate-300 hover:text-white transition flex items-center gap-1 text-xs sm:text-sm"
-            >
-              <span>Logout</span>
-            </button>
+            {/* Logout / Admin Login */}
+            {isAdminLoggedIn ? (
+              <button
+                onClick={onLogout}
+                className="text-red-300 hover:text-white bg-red-950/70 border border-red-700/60 hover:bg-red-800 px-2.5 py-1 rounded-xl transition flex items-center gap-1.5 text-xs font-bold active:scale-95 cursor-pointer shadow"
+                title="Logout directly"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>{lang === 'am' ? 'ውጣ' : 'Logout'}</span>
+              </button>
+            ) : (
+              <button
+                onClick={onOpenAdmin}
+                className="text-blue-200 hover:text-white bg-blue-950/70 border border-blue-700/60 hover:bg-blue-800 px-2.5 py-1 rounded-xl transition flex items-center gap-1.5 text-xs font-bold active:scale-95 cursor-pointer shadow"
+                title="Admin Login"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>{lang === 'am' ? 'ግባ' : 'Login'}</span>
+              </button>
+            )}
 
             {/* Mobile menu toggle */}
             <button
@@ -291,9 +308,34 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             <div className="flex justify-between items-center pt-1">
-              <button onClick={onOpenAdmin} className="text-blue-300 hover:text-white font-bold">
-                MY LISTINGS (Admin)
-              </button>
+              {isAdminLoggedIn ? (
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => { onOpenAdmin(); setMobileMenuOpen(false); }} 
+                    className="text-blue-300 hover:text-white font-bold text-xs"
+                  >
+                    MY LISTINGS (Admin)
+                  </button>
+                  <button 
+                    onClick={() => { 
+                      if (onLogout) onLogout(); 
+                      setMobileMenuOpen(false); 
+                    }} 
+                    className="text-red-400 hover:text-red-300 font-bold flex items-center gap-1 text-xs"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>{lang === 'am' ? 'ውጣ (Logout)' : 'Logout'}</span>
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => { onOpenAdmin(); setMobileMenuOpen(false); }} 
+                  className="text-blue-300 hover:text-white font-bold flex items-center gap-1 text-xs"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>{lang === 'am' ? 'አስተዳዳሪ ግባ (Login)' : 'Admin Login'}</span>
+                </button>
+              )}
               <button onClick={onToggleLang} className="border border-blue-400 px-3 py-1 rounded">
                 {lang === 'en' ? 'አማርኛ' : 'English'}
               </button>
