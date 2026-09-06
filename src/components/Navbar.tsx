@@ -11,7 +11,8 @@ import {
   Smartphone,
   ShieldCheck,
   User,
-  LogOut
+  LogOut,
+  CreditCard
 } from 'lucide-react';
 import { CharteLogo } from './CharteLogo';
 import { Language, Currency, ListingType } from '../types';
@@ -28,6 +29,8 @@ interface NavbarProps {
   onOpenListCar: () => void;
   onOpenAdmin: () => void;
   onOpenDownloadApp: () => void;
+  onOpenPaymentDesk?: () => void;
+  onOpenAbout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -42,6 +45,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenListCar,
   onOpenAdmin,
   onOpenDownloadApp,
+  onOpenPaymentDesk,
+  onOpenAbout,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -101,6 +106,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               {lang === 'am' ? 'የእኔ ዝርዝሮች (MY LISTINGS)' : 'MY LISTINGS'}
             </button>
+
+            {/* Pay / Deposit Button (Telebirr & CBE) */}
+            {onOpenPaymentDesk && (
+              <button
+                onClick={onOpenPaymentDesk}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600/40 border border-blue-400/60 text-blue-200 hover:bg-blue-600 hover:text-white transition text-xs font-bold shadow"
+                title="Telebirr & CBE Payment Desk"
+              >
+                <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{lang === 'am' ? 'ክፍያና ማስያዣ' : 'Pay / Deposit'}</span>
+              </button>
+            )}
 
             {/* Download Option button in Top Navy Bar */}
             <button
@@ -164,10 +181,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             <button
-              onClick={() => onSelectType('all')}
-              className={`hover:text-blue-200 transition ${
-                currentType === 'all' ? 'text-white border-b-2 border-white pb-0.5' : 'text-blue-100'
-              }`}
+              onClick={() => {
+                if (onOpenAbout) {
+                  onOpenAbout();
+                } else {
+                  onSelectType('all');
+                }
+              }}
+              className="text-blue-100 hover:text-white transition uppercase font-bold"
             >
               ABOUT
             </button>
@@ -247,20 +268,36 @@ export const Navbar: React.FC<NavbarProps> = ({
               RENT
             </button>
             <button 
-              onClick={() => { onSelectType('all'); setMobileMenuOpen(false); }}
-              className="p-2 bg-[#0037A3] rounded-lg"
+              onClick={() => { 
+                if (onOpenAbout) onOpenAbout();
+                else onSelectType('all');
+                setMobileMenuOpen(false); 
+              }}
+              className="p-2 bg-[#0037A3] rounded-lg text-amber-300 hover:text-white"
             >
-              ALL
+              ABOUT
             </button>
           </div>
 
-          <div className="pt-2 border-t border-blue-950 flex justify-between items-center text-xs">
-            <button onClick={onOpenAdmin} className="text-blue-300 hover:text-white font-bold">
-              MY LISTINGS (Admin)
-            </button>
-            <button onClick={onToggleLang} className="border border-blue-400 px-3 py-1 rounded">
-              {lang === 'en' ? 'አማርኛ' : 'English'}
-            </button>
+          <div className="pt-2 border-t border-blue-950 flex flex-col gap-2 text-xs">
+            {onOpenPaymentDesk && (
+              <button 
+                onClick={() => { onOpenPaymentDesk(); setMobileMenuOpen(false); }}
+                className="w-full bg-blue-600/50 border border-blue-400/60 p-2.5 rounded-xl font-bold flex items-center justify-center gap-2 text-white"
+              >
+                <CreditCard className="w-4 h-4 text-emerald-400" />
+                <span>{lang === 'am' ? 'የክፍያና ማስያዣ ዴስክ (Telebirr / CBE)' : 'Secure Payment & Deposit Desk'}</span>
+              </button>
+            )}
+
+            <div className="flex justify-between items-center pt-1">
+              <button onClick={onOpenAdmin} className="text-blue-300 hover:text-white font-bold">
+                MY LISTINGS (Admin)
+              </button>
+              <button onClick={onToggleLang} className="border border-blue-400 px-3 py-1 rounded">
+                {lang === 'en' ? 'አማርኛ' : 'English'}
+              </button>
+            </div>
           </div>
         </div>
       )}

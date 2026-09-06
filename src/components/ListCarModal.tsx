@@ -9,7 +9,8 @@ import {
   AlertCircle, 
   Sparkles, 
   Plus, 
-  Trash2 
+  Trash2,
+  CreditCard 
 } from 'lucide-react';
 import { CarListing, Language, ListingType } from '../types';
 import { POPULAR_CAR_MAKES, CAR_BODY_TYPES, ETHIOPIAN_PLATE_CODES } from '../data/mockCars';
@@ -18,7 +19,8 @@ import { ETHIOPIAN_CITIES } from '../data/mockListings';
 interface ListCarModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (newCar: Omit<CarListing, 'id' | 'createdAt' | 'views'>) => void;
+  onSubmit?: (newCar: Omit<CarListing, 'id' | 'createdAt' | 'views'>) => void;
+  onAddCar?: (newCar: Omit<CarListing, 'id' | 'createdAt' | 'views'>) => void;
   lang: Language;
 }
 
@@ -26,6 +28,7 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  onAddCar,
   lang,
 }) => {
   if (!isOpen) return null;
@@ -65,6 +68,11 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
   const [preferredContact, setPreferredContact] = useState<'phone' | 'whatsapp' | 'telegram' | 'any'>('phone');
   const [sellerNotes, setSellerNotes] = useState('');
 
+  // Featured Gold Promotion & Payment
+  const [isFeaturedPromotion, setIsFeaturedPromotion] = useState(false);
+  const [featuredPaymentMethod, setFeaturedPaymentMethod] = useState<'telebirr' | 'cbe'>('telebirr');
+  const [featuredTxnRef, setFeaturedTxnRef] = useState('');
+
   const [errorMsg, setErrorMsg] = useState('');
 
   const AVAILABLE_FEATURES = [
@@ -95,14 +103,14 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
     if (!files) return;
 
     const newPhotos: string[] = [];
-    const maxAllowed = 10 - photos.length;
+    const maxAllowed = 15 - photos.length;
     const toProcess: File[] = Array.from(files).slice(0, maxAllowed) as File[];
 
     toProcess.forEach((file: File) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
-          setPhotos((prev) => [...prev, event.target!.result as string].slice(0, 10));
+          setPhotos((prev) => [...prev, event.target!.result as string].slice(0, 15));
         }
       };
       reader.readAsDataURL(file);
@@ -142,39 +150,42 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
 
     const finalTitle = `${year} ${actualMake} ${model} (${condition === 'brand_new' ? 'Brand New' : 'Used'})`;
 
-    onSubmit({
-      title: finalTitle,
-      make: actualMake,
-      model: model.trim(),
-      year: Number(year),
-      type,
-      condition,
-      transmission,
-      fuelType,
-      plateCode,
-      bodyType: bodyType as any,
-      color: color.trim() || 'White',
-      mileage: Number(mileage) || 0,
-      engineCapacity: engineCapacity.trim(),
-      city,
-      neighborhood: neighborhood.trim() || 'Addis Ababa',
-      price: parsedPrice,
-      photos: defaultPhotos,
-      features: selectedFeatures,
-      description: description.trim() || `${year} ${actualMake} ${model} available for ${type === 'rent' ? 'rent' : 'sale'} in ${city}. Verified condition.`,
-      status: 'active',
-      isFeatured: false,
-      sellerType: 'owner',
-      sellerContact: {
-        name: sellerName.trim(),
-        phone: sellerPhone.trim(),
-        altPhone: sellerAltPhone.trim() || undefined,
-        email: sellerEmail.trim() || undefined,
-        telegram: sellerTelegram.trim() || undefined,
-        preferredContact,
-        notes: sellerNotes.trim() || undefined,
-      }
-    });
+    const submitHandler = onSubmit || onAddCar;
+    if (submitHandler) {
+      submitHandler({
+        title: finalTitle,
+        make: actualMake,
+        model: model.trim(),
+        year: Number(year),
+        type,
+        condition,
+        transmission,
+        fuelType,
+        plateCode,
+        bodyType: bodyType as any,
+        color: color.trim() || 'White',
+        mileage: Number(mileage) || 0,
+        engineCapacity: engineCapacity.trim(),
+        city,
+        neighborhood: neighborhood.trim() || 'Addis Ababa',
+        price: parsedPrice,
+        photos: defaultPhotos,
+        features: selectedFeatures,
+        description: description.trim() || `${year} ${actualMake} ${model} available for ${type === 'rent' ? 'rent' : 'sale'} in ${city}. Verified condition.`,
+        status: 'active',
+        isFeatured: isFeaturedPromotion,
+        sellerType: 'owner',
+        sellerContact: {
+          name: sellerName.trim(),
+          phone: sellerPhone.trim(),
+          altPhone: sellerAltPhone.trim() || undefined,
+          email: sellerEmail.trim() || undefined,
+          telegram: sellerTelegram.trim() || undefined,
+          preferredContact,
+          notes: sellerNotes.trim() || undefined,
+        }
+      });
+    }
 
     onClose();
   };
@@ -211,6 +222,28 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="max-h-[82vh] overflow-y-auto p-5 sm:p-7 space-y-6 text-xs">
           
+          {/* FOR SELLERS — 600 ETB, ONE TIME INFO BANNER */}
+          <div className="bg-[#051A46] border border-blue-500/40 rounded-2xl p-4 sm:p-5 text-slate-100 shadow-md">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center shrink-0 text-amber-400">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xs sm:text-sm font-bold tracking-wider uppercase text-sky-300 flex items-center gap-2">
+                  <span>{lang === 'am' ? 'ለሻጮች — ' : 'FOR SELLERS — '}</span>
+                  <span className="text-amber-400 font-extrabold">
+                    {lang === 'am' ? '600 ብር፣ የአንድ ጊዜ' : '600 ETB, ONE TIME'}
+                  </span>
+                </h3>
+                <p className="text-slate-200 text-[11px] sm:text-xs leading-relaxed">
+                  {lang === 'am'
+                    ? 'ይመዝገቡ፣ የአንድ ጊዜ 600 ብር ክፍያ ብቻ ይክፈሉ፣ መኪናዎን እስከ 15 ፎቶዎች እና ሙሉ መግለጫ ጋር ይዘርዝሩ። ዋጋዎን ወይም ፎቶዎችዎን በማንኛውም ጊዜ ያሻሽሉ፤ ሲፈልጉ መኪናዎን የተሸጠ ወይም አስቸኳይ ብለው ምልክት ያድርጉ።'
+                    : 'Register, pay a single 600 ETB fee, and list your car with up to 15 photos and a full description. Edit your price or photos anytime, and mark your car as Sold or Urgent whenever you need.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {errorMsg && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -499,7 +532,7 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
           {/* Section 5: Photos */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
-              5. {lang === 'am' ? 'የመኪናው ፎቶዎች (እስከ 10)' : 'Vehicle Photos (Up to 10)'}
+              5. {lang === 'am' ? 'የመኪናው ፎቶዎች (እስከ 15)' : 'Vehicle Photos (Up to 15)'}
             </label>
             
             <div className="border-2 border-dashed border-slate-300 rounded-2xl p-5 text-center hover:border-blue-500 transition-colors bg-slate-50">
@@ -683,6 +716,79 @@ export const ListCarModal: React.FC<ListCarModalProps> = ({
               />
             </div>
 
+          </div>
+
+          {/* SECTION 8: OPTIONAL GOLD FEATURED PROMOTION & TELEBIRR / CBE CHECKOUT */}
+          <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-amber-950/30 border border-amber-500/40 rounded-2xl p-4 sm:p-5 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                    <span>{lang === 'am' ? 'የጎልድ ማስታወቂያ ማሳደጊያ (Gold Featured Upgrade)' : 'Gold Featured Listing Upgrade (600 ETB)'}</span>
+                    <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">5x Views</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    {lang === 'am'
+                      ? 'መኪናዎ በመነሻ ገጽ አናት ላይ በወርቃማ ባጅ ጎልቶ ይታያል። በቴሌብር ወይም በንግድ ባንክ 600 ብር ይክፈሉ።'
+                      : 'Pin your vehicle at the top of the marketplace with a Gold Verified badge for maximum buyer calls.'}
+                  </p>
+                </div>
+              </div>
+
+              <input
+                type="checkbox"
+                id="featuredToggle"
+                checked={isFeaturedPromotion}
+                onChange={(e) => setIsFeaturedPromotion(e.target.checked)}
+                className="w-5 h-5 rounded text-amber-500 focus:ring-amber-400 border-slate-700 bg-slate-950 mt-1 cursor-pointer"
+              />
+            </div>
+
+            {isFeaturedPromotion && (
+              <div className="pt-2 border-t border-amber-500/20 space-y-3 animate-in fade-in">
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-slate-300">Pay via:</span>
+                  <button
+                    type="button"
+                    onClick={() => setFeaturedPaymentMethod('telebirr')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                      featuredPaymentMethod === 'telebirr'
+                        ? 'bg-[#0072CE] text-white'
+                        : 'bg-slate-800 text-slate-300'
+                    }`}
+                  >
+                    Telebirr (0715737393)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFeaturedPaymentMethod('cbe')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                      featuredPaymentMethod === 'cbe'
+                        ? 'bg-[#8B1874] text-white'
+                        : 'bg-slate-800 text-slate-300'
+                    }`}
+                  >
+                    CBE (1000582914029)
+                  </button>
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                    Enter 600 ETB Transfer Reference ID (Optional proof)
+                  </label>
+                  <input
+                    type="text"
+                    value={featuredTxnRef}
+                    onChange={(e) => setFeaturedTxnRef(e.target.value)}
+                    placeholder="e.g. FT2608... or Telebirr Txn"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white placeholder-slate-500 font-mono"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Submit Button */}

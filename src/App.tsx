@@ -38,6 +38,9 @@ import { ListCarModal } from './components/ListCarModal';
 import { CarAdminPortalModal } from './components/CarAdminPortalModal';
 import { CarFavoritesModal } from './components/CarFavoritesModal';
 import { DownloadAppModal } from './components/DownloadAppModal';
+import { CarPaymentModal, ReservationReceipt } from './components/CarPaymentModal';
+import { AboutCharteCarsModal } from './components/AboutCharteCarsModal';
+import { AboutCharteCarsSection } from './components/AboutCharteCarsSection';
 import { Footer } from './components/Footer';
 
 const STORAGE_KEY_CARS = 'charte_cars_listings_v1';
@@ -105,6 +108,21 @@ export default function App() {
   const [isCarAdminModalOpen, setIsCarAdminModalOpen] = useState(false);
   const [isCarFavoritesModalOpen, setIsCarFavoritesModalOpen] = useState(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
+  
+  // Payment & Reservation Desk State
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentTargetCar, setPaymentTargetCar] = useState<CarListing | null>(null);
+  const [paymentPurpose, setPaymentPurpose] = useState<'reservation' | 'down_payment' | 'listing_fee'>('reservation');
+
+  const handleOpenPayment = (
+    car: CarListing | null, 
+    purpose: 'reservation' | 'down_payment' | 'listing_fee' = 'reservation'
+  ) => {
+    setPaymentTargetCar(car);
+    setPaymentPurpose(purpose);
+    setIsPaymentModalOpen(true);
+  };
 
   // Persistence Effects
   useEffect(() => {
@@ -280,6 +298,8 @@ export default function App() {
         onOpenListCar={() => setIsListCarModalOpen(true)}
         onOpenAdmin={() => setIsCarAdminModalOpen(true)}
         onOpenDownloadApp={() => setIsDownloadModalOpen(true)}
+        onOpenPaymentDesk={() => handleOpenPayment(null, 'listing_fee')}
+        onOpenAbout={() => setIsAboutModalOpen(true)}
       />
 
       {/* 3. Hero Section for Charte Cars (FIND A CAR YOU CAN ACTUALLY SEE YOURSELF IN.) */}
@@ -414,13 +434,21 @@ export default function App() {
         </button>
       </div>
 
-      {/* 6. Footer */}
+      {/* 6. About Charte Cars Informational Section */}
+      <AboutCharteCarsSection
+        lang={lang}
+        onOpenListCar={() => setIsListCarModalOpen(true)}
+        onOpenAboutModal={() => setIsAboutModalOpen(true)}
+      />
+
+      {/* 7. Footer */}
       <Footer
         lang={lang}
         onOpenAdmin={() => setIsCarAdminModalOpen(true)}
         onOpenListCar={() => setIsListCarModalOpen(true)}
         onOpenDownloadApp={() => setIsDownloadModalOpen(true)}
         onSelectType={(type) => handleCarFilterChange({ type })}
+        onOpenAbout={() => setIsAboutModalOpen(true)}
       />
 
       {/* ------------------------------------------------------------- */}
@@ -474,6 +502,26 @@ export default function App() {
       <DownloadAppModal
         isOpen={isDownloadModalOpen}
         onClose={() => setIsDownloadModalOpen(false)}
+        lang={lang}
+      />
+
+      {/* About Charte Cars Modal */}
+      <AboutCharteCarsModal
+        isOpen={isAboutModalOpen}
+        onClose={() => setIsAboutModalOpen(false)}
+        lang={lang}
+        onOpenListCar={() => {
+          setIsAboutModalOpen(false);
+          setIsListCarModalOpen(true);
+        }}
+      />
+
+      {/* Car Payment & Seller Desk Modal */}
+      <CarPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        car={paymentTargetCar}
+        purpose={paymentPurpose}
         lang={lang}
       />
 

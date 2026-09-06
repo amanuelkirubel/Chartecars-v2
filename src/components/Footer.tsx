@@ -20,6 +20,7 @@ interface FooterProps {
   onOpenListCar: () => void;
   onOpenDownloadApp: () => void;
   onSelectType: (type: 'all' | 'sale' | 'rent') => void;
+  onOpenAbout?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -28,6 +29,7 @@ export const Footer: React.FC<FooterProps> = ({
   onOpenListCar,
   onOpenDownloadApp,
   onSelectType,
+  onOpenAbout,
 }) => {
   const currentYear = new Date().getFullYear();
 
@@ -120,6 +122,16 @@ export const Footer: React.FC<FooterProps> = ({
                   <span>{lang === 'am' ? 'መተግበሪያውን አውርድ (Download App)' : 'Download Mobile App'}</span>
                 </button>
               </li>
+              {onOpenAbout && (
+                <li>
+                  <button
+                    onClick={onOpenAbout}
+                    className="text-amber-400 hover:text-amber-300 font-semibold"
+                  >
+                    {lang === 'am' ? 'ስለ ቻርቴ መኪኖች (About Charte Cars)' : 'About Charte Cars (0% Middleman)'}
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
 
